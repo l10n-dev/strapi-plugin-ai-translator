@@ -1,0 +1,12 @@
+node_modules
+dist
+
+# Playground
+playground/node_modules
+playground/.tmp
+playground/.cache
+playground/.strapi
+playground/dist
+playground/types
+playground/database
+playground/*.db*
