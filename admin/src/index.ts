@@ -9,7 +9,7 @@ export default {
       icon: Earth,
       intlLabel: {
         id: getTrad('plugin.name'),
-        defaultMessage: 'AI Translator',
+        defaultMessage: 'L10n.dev - AI Translator',
       },
       Component: async () => {
         const { App } = await import('./pages/App');

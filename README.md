@@ -66,9 +66,12 @@ npm run develop
 ### Get your API Key
 
 1. Go to [l10n.dev/ws/keys](https://l10n.dev/ws/keys) and create a free API key.
-2. Open the Strapi Admin Panel.
-3. Navigate to **AI Translator** in the sidebar.
-4. Click **"Manage API Key"** and enter your key in the plugin settings.
+2. Open the Strapi Admin Panel and navigate to **L10n.dev - AI Translator** in the sidebar.
+3. You will see a **"Set up your API Key"** banner at the top of the page.
+4. Paste your key into the **"l10n.dev API Key"** field and click **"Save Key"**.
+5. The banner disappears and the plugin is ready to use.
+
+> To update the key later, find the masked key display at the top of the dashboard and click **"Change API Key"**.
 
 ### Plugin Settings (stored in Strapi)
 
@@ -93,7 +96,7 @@ All settings are managed through the Admin Panel UI — no file-based configurat
 
 ### Dashboard
 
-1. Open **AI Translator** from the sidebar.
+1. Open **L10n.dev - AI Translator** from the sidebar.
 2. Select your **target language** from the dropdown.
 3. The table shows all i18n-enabled Content Types with their translation status (e.g., "17/17", "0/39").
 4. Check the boxes for the Content Types you want to translate, then click **"Auto-translate"**.

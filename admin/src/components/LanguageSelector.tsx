@@ -1,6 +1,6 @@
-import { SingleSelect, SingleSelectOption } from '@strapi/design-system';
-import { useIntl } from 'react-intl';
-import { getTrad } from '../utils/getTrad';
+import { SingleSelect, SingleSelectOption } from "@strapi/design-system";
+import { useIntl } from "react-intl";
+import { getTrad } from "../utils/getTrad";
 
 interface Locale {
   code: string;
@@ -15,7 +15,12 @@ interface LanguageSelectorProps {
   disabled?: boolean;
 }
 
-export const LanguageSelector = ({ locales, value, onChange, disabled }: LanguageSelectorProps) => {
+export const LanguageSelector = ({
+  locales,
+  value,
+  onChange,
+  disabled,
+}: LanguageSelectorProps) => {
   const { formatMessage } = useIntl();
 
   const nonDefaultLocales = locales.filter((l) => !l.isDefault);
@@ -23,8 +28,8 @@ export const LanguageSelector = ({ locales, value, onChange, disabled }: Languag
   return (
     <SingleSelect
       placeholder={formatMessage({
-        id: getTrad('dashboard.targetLanguage'),
-        defaultMessage: 'Target language',
+        id: getTrad("dashboard.targetLanguage"),
+        defaultMessage: "Target language",
       })}
       value={value}
       onChange={(val: string | number) => onChange(String(val))}
@@ -33,7 +38,7 @@ export const LanguageSelector = ({ locales, value, onChange, disabled }: Languag
     >
       {nonDefaultLocales.map((locale) => (
         <SingleSelectOption key={locale.code} value={locale.code}>
-          {locale.name} ({locale.code})
+          {locale.name}
         </SingleSelectOption>
       ))}
     </SingleSelect>

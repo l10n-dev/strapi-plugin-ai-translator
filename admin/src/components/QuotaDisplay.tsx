@@ -1,6 +1,7 @@
-import { Box, Typography, Flex, Badge } from '@strapi/design-system';
-import { useIntl } from 'react-intl';
-import { getTrad } from '../utils/getTrad';
+import { Typography, Flex, Badge, Button } from "@strapi/design-system";
+import { useIntl } from "react-intl";
+import { URLS } from "ai-l10n-core";
+import { getTrad } from "../utils/getTrad";
 
 interface QuotaDisplayProps {
   remainingBalance?: number;
@@ -13,35 +14,33 @@ export const QuotaDisplay = ({ remainingBalance }: QuotaDisplayProps) => {
     <Flex gap={3} alignItems="center">
       <Typography variant="pi" textColor="neutral600">
         {formatMessage({
-          id: getTrad('dashboard.freeQuota'),
-          defaultMessage: '30,000 characters free monthly',
+          id: getTrad("dashboard.freeQuota"),
+          defaultMessage: "30,000 characters free monthly",
         })}
       </Typography>
-      {remainingBalance !== undefined && (
+      {remainingBalance != null && remainingBalance >= 0 && (
         <Badge active>
           {formatMessage(
             {
-              id: getTrad('dashboard.remainingBalance'),
-              defaultMessage: '{count} chars remaining',
+              id: getTrad("dashboard.remainingBalance"),
+              defaultMessage: "{count} chars remaining",
             },
-            { count: remainingBalance.toLocaleString() }
+            { count: remainingBalance.toLocaleString() },
           )}
         </Badge>
       )}
-      <Typography
-        variant="pi"
-        textColor="primary600"
-        tag="a"
-        href="https://l10n.dev/ws/keys"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ textDecoration: 'underline' }}
+      <Button
+        size="S"
+        variant="secondary"
+        onClick={() =>
+          window.open(URLS.PRICING, "_blank", "noopener,noreferrer")
+        }
       >
         {formatMessage({
-          id: getTrad('dashboard.manageApiKey'),
-          defaultMessage: 'Manage API Key',
+          id: getTrad("dashboard.buyCharacters"),
+          defaultMessage: "Buy Characters",
         })}
-      </Typography>
+      </Button>
     </Flex>
   );
 };

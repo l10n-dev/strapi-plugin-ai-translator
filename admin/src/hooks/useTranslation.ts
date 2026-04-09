@@ -22,7 +22,8 @@ interface BulkProgress {
   total: number;
   completed: number;
   failed: number;
-  status: 'idle' | 'running' | 'completed' | 'halted';
+  status: 'idle' | 'running' | 'completed' | 'stopped';
+  stopReason?: 'insufficientBalance' | 'unauthorized';
   errors: Array<{ documentId: string; error: string }>;
   remainingBalance?: number;
 }
@@ -54,6 +55,10 @@ export const useTranslation = () => {
   >(async (params) => {
     const data = await translateBulk(client, params);
     return data;
+  }, {
+    onMutate: () => {
+      queryClient.removeQueries(['ai-translator', 'bulk-status']);
+    },
   });
 
   const saveMutation = useMutation<

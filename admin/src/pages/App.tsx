@@ -1,8 +1,8 @@
-import { Routes, Route } from 'react-router-dom';
-import { Page } from '@strapi/strapi/admin';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { Dashboard } from './Dashboard';
-import { Editor } from './Editor';
+import { Routes, Route } from "react-router-dom";
+import { Page } from "@strapi/strapi/admin";
+import { QueryClient, QueryClientProvider } from "react-query";
+import { Dashboard } from "./Dashboard";
+import { Editor } from "./Editor";
 
 const queryClient = new QueryClient({
   defaultOptions: {

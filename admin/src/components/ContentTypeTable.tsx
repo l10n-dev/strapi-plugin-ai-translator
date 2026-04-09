@@ -7,16 +7,16 @@ import {
   Td,
   Checkbox,
   Typography,
-  Badge,
+  Box,
   Flex,
   IconButton,
   Button,
-} from '@strapi/design-system';
-import { Pencil, Play } from '@strapi/icons';
-import { useIntl } from 'react-intl';
-import { useNavigate } from 'react-router-dom';
-import { getTrad } from '../utils/getTrad';
-import PLUGIN_ID from '../pluginId';
+} from "@strapi/design-system";
+import { Pencil, Play } from "@strapi/icons";
+import { useIntl } from "react-intl";
+import { useNavigate } from "react-router-dom";
+import { getTrad } from "../utils/getTrad";
+import PLUGIN_ID from "../pluginId";
 
 interface ContentType {
   uid: string;
@@ -46,28 +46,45 @@ export const ContentTypeTable = ({
   const { formatMessage } = useIntl();
   const navigate = useNavigate();
 
-  const allSelected = contentTypes.length > 0 && selectedUids.length === contentTypes.length;
+  const allSelected =
+    contentTypes.length > 0 && selectedUids.length === contentTypes.length;
 
   const getStatus = (ct: ContentType) => {
-    if (translatingUid === ct.uid) return 'translating';
-    if (ct.totalEntries === 0) return 'empty';
-    if (ct.translatedEntries >= ct.totalEntries) return 'upToDate';
-    if (ct.translatedEntries > 0) return 'partial';
-    return 'notTranslated';
+    if (translatingUid === ct.uid) return "translating";
+    if (ct.totalEntries === 0) return "empty";
+    if (ct.translatedEntries >= ct.totalEntries) return "upToDate";
+    if (ct.translatedEntries > 0) return "partial";
+    return "notTranslated";
   };
+
+  const pill = (bg: string, color: string, label: string) => (
+    <Box
+      background={bg}
+      paddingTop={1}
+      paddingBottom={1}
+      paddingLeft={2}
+      paddingRight={2}
+      borderRadius="4px"
+      display="inline-block"
+    >
+      <Typography variant="pi" fontWeight="bold" textColor={color}>
+        {label}
+      </Typography>
+    </Box>
+  );
 
   const statusBadge = (status: string) => {
     switch (status) {
-      case 'translating':
-        return <Badge active>Translating...</Badge>;
-      case 'upToDate':
-        return <Badge active backgroundColor="success100" textColor="success700">Up to date</Badge>;
-      case 'partial':
-        return <Badge active backgroundColor="warning100" textColor="warning700">Partial</Badge>;
-      case 'empty':
-        return <Badge active backgroundColor="neutral150" textColor="neutral600">Empty</Badge>;
+      case "translating":
+        return pill("primary100", "primary700", "Translating...");
+      case "upToDate":
+        return pill("success100", "success700", "Up to date");
+      case "partial":
+        return pill("warning100", "warning700", "Partial");
+      case "empty":
+        return pill("neutral150", "neutral600", "Empty");
       default:
-        return <Badge active backgroundColor="danger100" textColor="danger700">Not translated</Badge>;
+        return pill("danger100", "danger700", "Not translated");
     }
   };
 
@@ -84,27 +101,42 @@ export const ContentTypeTable = ({
           </Th>
           <Th>
             <Typography variant="sigma">
-              {formatMessage({ id: getTrad('table.category'), defaultMessage: 'Category' })}
+              {formatMessage({
+                id: getTrad("table.category"),
+                defaultMessage: "Category",
+              })}
             </Typography>
           </Th>
           <Th>
             <Typography variant="sigma">
-              {formatMessage({ id: getTrad('table.type'), defaultMessage: 'Type' })}
+              {formatMessage({
+                id: getTrad("table.type"),
+                defaultMessage: "Type",
+              })}
             </Typography>
           </Th>
           <Th>
             <Typography variant="sigma">
-              {formatMessage({ id: getTrad('table.translated'), defaultMessage: 'Translated' })}
+              {formatMessage({
+                id: getTrad("table.translated"),
+                defaultMessage: "Translated",
+              })}
             </Typography>
           </Th>
           <Th>
             <Typography variant="sigma">
-              {formatMessage({ id: getTrad('table.status'), defaultMessage: 'Status' })}
+              {formatMessage({
+                id: getTrad("table.status"),
+                defaultMessage: "Status",
+              })}
             </Typography>
           </Th>
           <Th>
             <Typography variant="sigma">
-              {formatMessage({ id: getTrad('table.actions'), defaultMessage: 'Actions' })}
+              {formatMessage({
+                id: getTrad("table.actions"),
+                defaultMessage: "Actions",
+              })}
             </Typography>
           </Th>
         </Tr>
@@ -128,7 +160,7 @@ export const ContentTypeTable = ({
               </Td>
               <Td>
                 <Typography textColor="neutral600">
-                  {ct.kind === 'singleType' ? 'Single' : 'Collection'}
+                  {ct.kind === "singleType" ? "Single" : "Collection"}
                 </Typography>
               </Td>
               <Td>
@@ -140,7 +172,9 @@ export const ContentTypeTable = ({
               <Td>
                 <Flex gap={1}>
                   <IconButton
-                    onClick={() => navigate(`editor/${encodeURIComponent(ct.uid)}`)}
+                    onClick={() =>
+                      navigate(`editor/${encodeURIComponent(ct.uid)}`)
+                    }
                     label="Edit"
                     variant="ghost"
                   >
@@ -150,7 +184,7 @@ export const ContentTypeTable = ({
                     onClick={() => onTranslate(ct.uid)}
                     label="Translate"
                     variant="ghost"
-                    disabled={status === 'translating' || ct.totalEntries === 0}
+                    disabled={status === "translating" || ct.totalEntries === 0}
                   >
                     <Play />
                   </IconButton>

@@ -1,8 +1,8 @@
-import { L10nTranslationService, FinishReason } from 'ai-l10n-core';
+import { L10nTranslationService, FinishReason, URLS } from "ai-l10n-core";
 
 export interface TranslateEntryResult {
-  status: 'success' | 'error';
-  reason?: 'insufficientBalance' | 'unauthorized' | 'unknown';
+  status: "success" | "error";
+  reason?: "insufficientBalance" | "unauthorized" | "unknown";
   message?: string;
   translations?: Record<string, string>;
   charsUsed?: number;
@@ -13,39 +13,55 @@ export interface BulkProgress {
   total: number;
   completed: number;
   failed: number;
-  status: 'idle' | 'running' | 'completed' | 'halted';
+  status: "idle" | "running" | "completed" | "stopped";
+  stopReason?: "insufficientBalance" | "unauthorized";
   errors: Array<{ documentId: string; error: string }>;
   remainingBalance?: number;
 }
 
-const StrapiLogger = (strapi: any) => ({
-  logInfo(message: string) {
-    strapi.log.info(`[ai-translator] ${message}`);
-  },
-  logWarning(message: string, error?: unknown) {
-    strapi.log.warn(`[ai-translator] ${message}`, error);
-  },
-  logError(message: string, error?: unknown) {
-    strapi.log.error(`[ai-translator] ${message}`, error);
-  },
-  showAndLogError(message: string, error?: unknown) {
-    strapi.log.error(`[ai-translator] ${message}`, error);
-  },
-});
+const createStrapiLogger = (strapi: any) => {
+  const ctx = {
+    lastErrorUrl: undefined as string | undefined,
+    lastErrorMessage: undefined as string | undefined,
+  };
+  return {
+    logger: {
+      logInfo(message: string) {
+        strapi.log.info(`[ai-translator] ${message}`);
+      },
+      logWarning(message: string) {
+        strapi.log.warn(`[ai-translator] ${message}`);
+      },
+      logError(message: string) {
+        strapi.log.error(`[ai-translator] ${message}`);
+      },
+      showAndLogError(
+        message: string,
+        _error?: unknown,
+        _prefix?: string,
+        _actionLabel?: string,
+        actionUrl?: string,
+      ) {
+        strapi.log.error(`[ai-translator] ${message}`);
+        ctx.lastErrorUrl = actionUrl;
+        ctx.lastErrorMessage = message;
+      },
+    },
+    getLastError: () => ctx,
+  };
+};
 
 let bulkProgress: BulkProgress = {
   total: 0,
   completed: 0,
   failed: 0,
-  status: 'idle',
+  status: "idle",
   errors: [],
 };
 
 let abortBulk = false;
 
 export default ({ strapi }: { strapi: any }) => {
-  const l10nService = new L10nTranslationService(StrapiLogger(strapi));
-
   return {
     getBulkProgress(): BulkProgress {
       return { ...bulkProgress };
@@ -55,17 +71,29 @@ export default ({ strapi }: { strapi: any }) => {
       uid: string,
       documentId: string,
       targetLocale: string,
-      options?: { incremental?: boolean; fields?: string[] }
+      options?: { incremental?: boolean; fields?: string[] },
     ): Promise<TranslateEntryResult> {
-      const settingsService = strapi.plugin('ai-translator').service('settings');
-      const contentTypeService = strapi.plugin('ai-translator').service('content-type');
+      const settingsService = strapi
+        .plugin("ai-translator")
+        .service("settings");
+      const contentTypeService = strapi
+        .plugin("ai-translator")
+        .service("content-type");
       const apiKey = await settingsService.getApiKey();
 
       if (!apiKey) {
-        return { status: 'error', reason: 'unauthorized', message: 'API key not configured' };
+        return {
+          status: "error",
+          reason: "unauthorized",
+          message: "API key not configured",
+        };
       }
 
-      const entry = await contentTypeService.getEntry(uid, documentId, targetLocale);
+      const entry = await contentTypeService.getEntry(
+        uid,
+        documentId,
+        targetLocale,
+      );
 
       const sourceObj: Record<string, string> = {};
       const targetObj: Record<string, string> = {};
@@ -75,7 +103,7 @@ export default ({ strapi }: { strapi: any }) => {
         const fieldData = entry.fields[fieldName];
         if (!fieldData) continue;
         const srcVal = fieldData.source;
-        if (srcVal !== null && srcVal !== undefined && srcVal !== '') {
+        if (srcVal !== null && srcVal !== undefined && srcVal !== "") {
           sourceObj[fieldName] = String(srcVal);
         }
         if (options?.incremental && fieldData.target) {
@@ -84,8 +112,11 @@ export default ({ strapi }: { strapi: any }) => {
       }
 
       if (Object.keys(sourceObj).length === 0) {
-        return { status: 'success', translations: {}, charsUsed: 0 };
+        return { status: "success", translations: {}, charsUsed: 0 };
       }
+
+      const { logger, getLastError } = createStrapiLogger(strapi);
+      const l10nService = new L10nTranslationService(logger);
 
       try {
         const result = await l10nService.translate(
@@ -93,49 +124,65 @@ export default ({ strapi }: { strapi: any }) => {
             sourceStrings: JSON.stringify(sourceObj),
             targetLanguageCode: targetLocale,
             returnTranslationsAsString: true,
-            client: 'strapi-plugin-ai-translator',
+            client: "strapi-ai-translator",
             translateOnlyNewStrings: options?.incremental || false,
-            targetStrings: Object.keys(targetObj).length > 0 ? JSON.stringify(targetObj) : undefined,
+            targetStrings:
+              Object.keys(targetObj).length > 0
+                ? JSON.stringify(targetObj)
+                : undefined,
             schema: null,
           },
-          apiKey
+          apiKey,
         );
 
         if (!result) {
+          const lastError = getLastError();
+          if (lastError.lastErrorUrl === URLS.PRICING) {
+            return {
+              status: "error",
+              reason: "insufficientBalance",
+              message:
+                lastError.lastErrorMessage ||
+                `Not enough characters remaining. Purchase more at ${URLS.PRICING}`,
+            };
+          }
           return {
-            status: 'error',
-            reason: 'unauthorized',
-            message: 'Invalid API key or insufficient balance',
+            status: "error",
+            reason: "unauthorized",
+            message:
+              lastError.lastErrorMessage ||
+              "Unauthorized. Please check your API Key.",
           };
         }
 
         if (result.finishReason === FinishReason.insufficientBalance) {
           return {
-            status: 'error',
-            reason: 'insufficientBalance',
-            message: 'Not enough characters remaining. Purchase more at https://l10n.dev/#pricing',
+            status: "error",
+            reason: "insufficientBalance",
+            message: `Not enough characters remaining. Purchase more at ${URLS.PRICING}`,
             remainingBalance: result.remainingBalance,
           };
         }
 
         let translations: Record<string, string> = {};
         if (result.translations) {
-          translations = typeof result.translations === 'string'
-            ? JSON.parse(result.translations)
-            : result.translations;
+          translations =
+            typeof result.translations === "string"
+              ? JSON.parse(result.translations)
+              : result.translations;
         }
 
         return {
-          status: 'success',
+          status: "success",
           translations,
           charsUsed: result.usage?.charsUsed,
           remainingBalance: result.remainingBalance,
         };
       } catch (error: any) {
         return {
-          status: 'error',
-          reason: 'unknown',
-          message: error.message || 'Translation failed',
+          status: "error",
+          reason: "unknown",
+          message: error.message || "Translation failed",
         };
       }
     },
@@ -144,13 +191,16 @@ export default ({ strapi }: { strapi: any }) => {
       uid: string,
       documentId: string,
       targetLocale: string,
-      translatedFields: Record<string, string>
+      translatedFields: Record<string, string>,
     ) {
-      const existing = await strapi.documents(uid).findOne({
-        documentId,
-        locale: targetLocale,
-        fields: ['documentId'],
-      }).catch(() => null);
+      const existing = await strapi
+        .documents(uid)
+        .findOne({
+          documentId,
+          locale: targetLocale,
+          fields: ["documentId"],
+        })
+        .catch(() => null);
 
       if (existing) {
         return strapi.documents(uid).update({
@@ -170,19 +220,29 @@ export default ({ strapi }: { strapi: any }) => {
     async translateBulk(
       uids: string[],
       targetLocale: string,
-      options?: { incremental?: boolean }
+      options?: { incremental?: boolean },
     ) {
-      const contentTypeService = strapi.plugin('ai-translator').service('content-type');
-      const defaultLocale = await contentTypeService.getDefaultLocale();
-
+      // Reset immediately before any async work to avoid race with client polling
       abortBulk = false;
+      bulkProgress = {
+        total: 0,
+        completed: 0,
+        failed: 0,
+        status: "running",
+        errors: [],
+      };
+
+      const contentTypeService = strapi
+        .plugin("ai-translator")
+        .service("content-type");
+      const defaultLocale = await contentTypeService.getDefaultLocale();
 
       // Gather all entries to translate
       const allTasks: Array<{ uid: string; documentId: string }> = [];
       for (const uid of uids) {
         const entries = await strapi.documents(uid).findMany({
           locale: defaultLocale,
-          fields: ['documentId'],
+          fields: ["documentId"],
           limit: 10000,
         });
         for (const entry of entries) {
@@ -190,16 +250,10 @@ export default ({ strapi }: { strapi: any }) => {
         }
       }
 
-      bulkProgress = {
-        total: allTasks.length,
-        completed: 0,
-        failed: 0,
-        status: 'running',
-        errors: [],
-      };
+      bulkProgress.total = allTasks.length;
 
       if (allTasks.length === 0) {
-        bulkProgress.status = 'completed';
+        bulkProgress.status = "completed";
         return bulkProgress;
       }
 
@@ -218,16 +272,16 @@ export default ({ strapi }: { strapi: any }) => {
             task.uid,
             task.documentId,
             targetLocale,
-            { incremental: options?.incremental }
+            { incremental: options?.incremental },
           );
 
-          if (result.status === 'success' && result.translations) {
+          if (result.status === "success" && result.translations) {
             if (Object.keys(result.translations).length > 0) {
               await this.saveTranslation(
                 task.uid,
                 task.documentId,
                 targetLocale,
-                result.translations
+                result.translations,
               );
             }
             bulkProgress.completed++;
@@ -236,11 +290,15 @@ export default ({ strapi }: { strapi: any }) => {
             bulkProgress.failed++;
             bulkProgress.errors.push({
               documentId: task.documentId,
-              error: result.message || 'Translation failed',
+              error: result.message || "Translation failed",
             });
-            if (result.reason === 'insufficientBalance') {
+            if (
+              result.reason === "insufficientBalance" ||
+              result.reason === "unauthorized"
+            ) {
               abortBulk = true;
-              bulkProgress.status = 'halted';
+              bulkProgress.status = "stopped";
+              bulkProgress.stopReason = result.reason;
               bulkProgress.remainingBalance = result.remainingBalance;
             }
           }
@@ -256,8 +314,8 @@ export default ({ strapi }: { strapi: any }) => {
 
       await Promise.allSettled(promises);
 
-      if (bulkProgress.status !== 'halted') {
-        bulkProgress.status = 'completed';
+      if (bulkProgress.status !== "stopped") {
+        bulkProgress.status = "completed";
       }
 
       return { ...bulkProgress };
@@ -265,8 +323,8 @@ export default ({ strapi }: { strapi: any }) => {
 
     cancelBulk() {
       abortBulk = true;
-      if (bulkProgress.status === 'running') {
-        bulkProgress.status = 'halted';
+      if (bulkProgress.status === "running") {
+        bulkProgress.status = "stopped";
       }
     },
   };

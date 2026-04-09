@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "react-query";
 import {
   Box,
   Button,
@@ -8,41 +9,64 @@ import {
   TextInput,
   Divider,
   Link,
-} from '@strapi/design-system';
-import { Page, Layouts, useNotification } from '@strapi/strapi/admin';
-import { Play } from '@strapi/icons';
-import { useIntl } from 'react-intl';
-import { getTrad } from '../utils/getTrad';
-import { useContentTypes } from '../hooks/useContentTypes';
-import { usePluginSettings } from '../hooks/usePluginSettings';
-import { useTranslation, useBulkProgress } from '../hooks/useTranslation';
-import { LanguageSelector } from '../components/LanguageSelector';
-import { QuotaDisplay } from '../components/QuotaDisplay';
-import { ContentTypeTable } from '../components/ContentTypeTable';
-import { TranslationProgress } from '../components/TranslationProgress';
+} from "@strapi/design-system";
+import { Page, Layouts, useNotification } from "@strapi/strapi/admin";
+import { Play } from "@strapi/icons";
+import { useIntl } from "react-intl";
+import { URLS } from "ai-l10n-core";
+import { getTrad } from "../utils/getTrad";
+import { useContentTypes } from "../hooks/useContentTypes";
+import { usePluginSettings } from "../hooks/usePluginSettings";
+import { useTranslation, useBulkProgress } from "../hooks/useTranslation";
+import { LanguageSelector } from "../components/LanguageSelector";
+import { QuotaDisplay } from "../components/QuotaDisplay";
+import { ContentTypeTable } from "../components/ContentTypeTable";
+import { TranslationProgress } from "../components/TranslationProgress";
 
 export const Dashboard = () => {
   const { formatMessage } = useIntl();
   const { toggleNotification } = useNotification();
 
-  const { settings, isLoading: settingsLoading, update: updateSettings } = usePluginSettings();
-  const [targetLocale, setTargetLocale] = useState('');
+  const {
+    settings,
+    isLoading: settingsLoading,
+    update: updateSettings,
+    updateAsync,
+  } = usePluginSettings();
+  const [targetLocale, setTargetLocale] = useState("");
   const [incremental, setIncremental] = useState(true);
   const [selectedUids, setSelectedUids] = useState<string[]>([]);
   const [isBulkRunning, setIsBulkRunning] = useState(false);
-  const [remainingBalance, setRemainingBalance] = useState<number | undefined>();
+  const [remainingBalance, setRemainingBalance] = useState<
+    number | undefined
+  >();
   const [translatingUid, setTranslatingUid] = useState<string | undefined>();
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [isSavingKey, setIsSavingKey] = useState(false);
 
-  const { data, isLoading, refetch } = useContentTypes(targetLocale || undefined);
-  const { translate, translateBulk, cancel } = useTranslation();
+  const { data, isLoading, refetch } = useContentTypes(
+    targetLocale || undefined,
+  );
+  const queryClient = useQueryClient();
+  const { translateBulk } = useTranslation();
   const { data: bulkProgress } = useBulkProgress(isBulkRunning);
+
+  // Clear stale bulk-status cache when navigating away so the
+  // completion notification doesn't re-fire on next mount.
+  useEffect(() => {
+    return () => {
+      queryClient.removeQueries(["ai-translator", "bulk-status"]);
+    };
+  }, []);
 
   // Initialize from settings
   useEffect(() => {
     if (settings) {
       if (settings.lastTargetLocale) setTargetLocale(settings.lastTargetLocale);
       setIncremental(settings.incremental ?? true);
-      if (settings.selectedCategories?.length) setSelectedUids(settings.selectedCategories);
+      if (settings.selectedCategories?.length)
+        setSelectedUids(settings.selectedCategories);
     }
   }, [settings]);
 
@@ -58,24 +82,58 @@ export const Dashboard = () => {
   useEffect(() => {
     if (bulkProgress) {
       setRemainingBalance(bulkProgress.remainingBalance);
-      if (bulkProgress.status === 'completed' || bulkProgress.status === 'halted') {
+      if (
+        bulkProgress.status === "completed" ||
+        bulkProgress.status === "stopped"
+      ) {
         setIsBulkRunning(false);
+        setTranslatingUid(undefined);
         refetch();
-        if (bulkProgress.status === 'halted') {
+        if (bulkProgress.status === "stopped") {
+          if (bulkProgress.stopReason === "unauthorized") {
+            toggleNotification({
+              type: "warning",
+              message: formatMessage({
+                id: getTrad("notification.unauthorized"),
+                defaultMessage:
+                  "Translation stopped: Invalid API key. Please check your API key.",
+              }),
+            });
+          } else {
+            toggleNotification({
+              type: "warning",
+              message: formatMessage({
+                id: getTrad("notification.insufficientBalance"),
+                defaultMessage: `Translation stopped: insufficient balance. Purchase more at ${URLS.PRICING}`,
+              }),
+            });
+          }
+        } else if (bulkProgress.failed > 0 && bulkProgress.completed === 0) {
           toggleNotification({
-            type: 'warning',
+            type: "warning",
             message: formatMessage({
-              id: getTrad('notification.insufficientBalance'),
-              defaultMessage:
-                'Translation halted: insufficient balance. Purchase more at https://l10n.dev/#pricing',
+              id: getTrad("notification.bulkFailed"),
+              defaultMessage: "Translation failed for all entries.",
             }),
+          });
+        } else if (bulkProgress.failed > 0) {
+          toggleNotification({
+            type: "warning",
+            message: formatMessage(
+              {
+                id: getTrad("notification.bulkPartial"),
+                defaultMessage:
+                  "Translation completed with {failed} failed entries.",
+              },
+              { failed: bulkProgress.failed },
+            ),
           });
         } else {
           toggleNotification({
-            type: 'success',
+            type: "success",
             message: formatMessage({
-              id: getTrad('notification.bulkCompleted'),
-              defaultMessage: 'Bulk translation completed!',
+              id: getTrad("notification.bulkCompleted"),
+              defaultMessage: "Bulk translation completed!",
             }),
           });
         }
@@ -83,12 +141,34 @@ export const Dashboard = () => {
     }
   }, [bulkProgress?.status, bulkProgress?.completed]);
 
+  const handleSaveApiKey = useCallback(async () => {
+    const trimmed = apiKeyInput.trim();
+    if (!trimmed) return;
+    setIsSavingKey(true);
+    try {
+      await updateAsync({ apiKey: trimmed });
+      setApiKeyInput("");
+      setShowApiKeyInput(false);
+      toggleNotification({
+        type: "success",
+        message: formatMessage({
+          id: getTrad("settings.apiKeySaved"),
+          defaultMessage: "API key saved successfully!",
+        }),
+      });
+    } catch (err: any) {
+      toggleNotification({ type: "warning", message: err.message });
+    } finally {
+      setIsSavingKey(false);
+    }
+  }, [apiKeyInput, updateAsync, toggleNotification, formatMessage]);
+
   const handleLocaleChange = useCallback(
     (locale: string) => {
       setTargetLocale(locale);
       updateSettings({ lastTargetLocale: locale });
     },
-    [updateSettings]
+    [updateSettings],
   );
 
   const handleIncrementalChange = useCallback(
@@ -96,7 +176,7 @@ export const Dashboard = () => {
       setIncremental(checked);
       updateSettings({ incremental: checked });
     },
-    [updateSettings]
+    [updateSettings],
   );
 
   const handleToggleSelect = useCallback(
@@ -109,16 +189,18 @@ export const Dashboard = () => {
         return next;
       });
     },
-    [updateSettings]
+    [updateSettings],
   );
 
   const handleSelectAll = useCallback(
     (selected: boolean) => {
-      const next = selected ? (data?.contentTypes || []).map((ct) => ct.uid) : [];
+      const next = selected
+        ? (data?.contentTypes || []).map((ct) => ct.uid)
+        : [];
       setSelectedUids(next);
       updateSettings({ selectedCategories: next });
     },
-    [data?.contentTypes, updateSettings]
+    [data?.contentTypes, updateSettings],
   );
 
   const handleTranslateSingle = useCallback(
@@ -133,12 +215,12 @@ export const Dashboard = () => {
           },
           onError: (err) => {
             setTranslatingUid(undefined);
-            toggleNotification({ type: 'warning', message: err.message });
+            toggleNotification({ type: "warning", message: err.message });
           },
-        }
+        },
       );
     },
-    [targetLocale, incremental, translateBulk, toggleNotification]
+    [targetLocale, incremental, translateBulk, toggleNotification],
   );
 
   const handleAutoTranslate = useCallback(() => {
@@ -150,88 +232,261 @@ export const Dashboard = () => {
           setIsBulkRunning(true);
         },
         onError: (err) => {
-          toggleNotification({ type: 'warning', message: err.message });
+          toggleNotification({ type: "warning", message: err.message });
         },
-      }
+      },
     );
-  }, [targetLocale, selectedUids, incremental, translateBulk, toggleNotification]);
+  }, [
+    targetLocale,
+    selectedUids,
+    incremental,
+    translateBulk,
+    toggleNotification,
+  ]);
 
   // Calculate global percentage
-  const totalEntries = data?.contentTypes?.reduce((sum, ct) => sum + ct.totalEntries, 0) || 0;
+  const totalEntries =
+    data?.contentTypes?.reduce((sum, ct) => sum + ct.totalEntries, 0) || 0;
   const totalTranslated =
     data?.contentTypes?.reduce((sum, ct) => sum + ct.translatedEntries, 0) || 0;
   const globalPercentage =
-    totalEntries > 0 ? ((totalTranslated / totalEntries) * 100).toFixed(1) : '0';
+    totalEntries > 0
+      ? ((totalTranslated / totalEntries) * 100).toFixed(1)
+      : "0";
 
   if (settingsLoading || isLoading) return <Page.Loading />;
 
   return (
     <Layouts.Root>
       <Page.Title>
-        {formatMessage({ id: getTrad('plugin.name'), defaultMessage: 'AI Translator' })}
+        {formatMessage({
+          id: getTrad("plugin.name"),
+          defaultMessage: "L10n.dev - AI Translator",
+        })}
       </Page.Title>
       <Page.Main>
         <Layouts.Header
-          title={formatMessage({ id: getTrad('plugin.name'), defaultMessage: 'AI Translator' })}
+          title={formatMessage({
+            id: getTrad("plugin.name"),
+            defaultMessage: "L10n.dev - AI Translator",
+          })}
           subtitle={formatMessage(
             {
-              id: getTrad('dashboard.subtitle'),
-              defaultMessage: '{percentage}% translated',
+              id: getTrad("dashboard.subtitle"),
+              defaultMessage: "{percentage}% translated",
             },
-            { percentage: globalPercentage }
+            { percentage: globalPercentage },
           )}
           primaryAction={
             <Button
               startIcon={<Play />}
               onClick={handleAutoTranslate}
-              disabled={selectedUids.length === 0 || !targetLocale || isBulkRunning}
+              disabled={
+                selectedUids.length === 0 || !targetLocale || isBulkRunning
+              }
               loading={isBulkRunning}
             >
               {formatMessage({
-                id: getTrad('dashboard.autoTranslate'),
-                defaultMessage: 'Auto-translate',
+                id: getTrad("dashboard.autoTranslate"),
+                defaultMessage: "Auto-translate",
               })}
             </Button>
           }
         />
 
         <Layouts.Content>
+          <Box paddingBottom={6}>
+            <Flex
+              gap={3}
+              alignItems="center"
+              justifyContent="space-between"
+              wrap="wrap"
+            >
+              <Flex gap={3} alignItems="center" wrap="wrap" style={{ flex: 1 }}>
+                {!settings?.hasApiKey ? (
+                  <>
+                    <Box style={{ flex: "1 1 280px", maxWidth: 420 }}>
+                      <TextInput
+                        aria-label={formatMessage({
+                          id: getTrad("settings.apiKeyLabel"),
+                          defaultMessage: "l10n.dev API Key",
+                        })}
+                        placeholder={formatMessage({
+                          id: getTrad("settings.apiKeyPlaceholder"),
+                          defaultMessage:
+                            "Paste your l10n.dev API key to start translating",
+                        })}
+                        size="S"
+                        value={apiKeyInput}
+                        onChange={(e: any) => setApiKeyInput(e.target.value)}
+                        type="password"
+                      />
+                    </Box>
+                    <Button
+                      onClick={handleSaveApiKey}
+                      loading={isSavingKey}
+                      disabled={!apiKeyInput.trim()}
+                    >
+                      {formatMessage({
+                        id: getTrad("settings.saveKey"),
+                        defaultMessage: "Save",
+                      })}
+                    </Button>
+                  </>
+                ) : showApiKeyInput ? (
+                  <>
+                    <Box style={{ flex: "1 1 240px", maxWidth: 380 }}>
+                      <TextInput
+                        size="S"
+                        aria-label={formatMessage({
+                          id: getTrad("settings.newApiKeyPlaceholder"),
+                          defaultMessage: "Paste new API key",
+                        })}
+                        placeholder={formatMessage({
+                          id: getTrad("settings.newApiKeyPlaceholder"),
+                          defaultMessage: "Paste new API key",
+                        })}
+                        value={apiKeyInput}
+                        onChange={(e: any) => setApiKeyInput(e.target.value)}
+                        type="password"
+                      />
+                    </Box>
+                    <Button
+                      onClick={handleSaveApiKey}
+                      loading={isSavingKey}
+                      disabled={!apiKeyInput.trim()}
+                    >
+                      {formatMessage({
+                        id: getTrad("settings.saveKey"),
+                        defaultMessage: "Save",
+                      })}
+                    </Button>
+                    <Button
+                      variant="tertiary"
+                      onClick={() => {
+                        setShowApiKeyInput(false);
+                        setApiKeyInput("");
+                      }}
+                    >
+                      {formatMessage({
+                        id: getTrad("settings.cancel"),
+                        defaultMessage: "Cancel",
+                      })}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Typography variant="pi" textColor="neutral600">
+                      {formatMessage({
+                        id: getTrad("settings.apiKeySet"),
+                        defaultMessage: "API key configured",
+                      })}
+                    </Typography>
+                    <Button
+                      variant="tertiary"
+                      onClick={() => setShowApiKeyInput(true)}
+                    >
+                      {formatMessage({
+                        id: getTrad("settings.changeKey"),
+                        defaultMessage: "Change",
+                      })}
+                    </Button>
+                  </>
+                )}
+              </Flex>
+              <Link href={URLS.API_KEYS} isExternal>
+                {formatMessage({
+                  id: getTrad("settings.getApiKeyLink"),
+                  defaultMessage: "Get a free key",
+                })}
+              </Link>
+            </Flex>
+          </Box>
+
           <Box paddingBottom={4}>
-            <Flex gap={4} alignItems="flex-end" wrap="wrap">
-              {data?.locales && (
-                <LanguageSelector
-                  locales={data.locales}
-                  value={targetLocale}
-                  onChange={handleLocaleChange}
-                  disabled={isBulkRunning}
-                />
-              )}
+            <Flex
+              gap={6}
+              alignItems="center"
+              justifyContent="space-between"
+              wrap="wrap"
+            >
+              <Flex gap={6} alignItems="center" wrap="wrap">
+                {data?.locales && (
+                  <LanguageSelector
+                    locales={data.locales}
+                    value={targetLocale}
+                    onChange={handleLocaleChange}
+                    disabled={isBulkRunning}
+                  />
+                )}
+                <Checkbox
+                  checked={incremental}
+                  onCheckedChange={handleIncrementalChange}
+                >
+                  {formatMessage({
+                    id: getTrad("dashboard.incremental"),
+                    defaultMessage: "Incremental (new strings only)",
+                  })}
+                </Checkbox>
+              </Flex>
               <QuotaDisplay remainingBalance={remainingBalance} />
             </Flex>
           </Box>
 
-          <Box paddingBottom={4}>
-            <Flex gap={4} alignItems="center">
-              <Checkbox
-                checked={incremental}
-                onCheckedChange={handleIncrementalChange}
-              >
-                {formatMessage({
-                  id: getTrad('dashboard.incremental'),
-                  defaultMessage: 'Incremental (new strings only)',
-                })}
-              </Checkbox>
-            </Flex>
-          </Box>
-
-          {isBulkRunning && bulkProgress && (
+          {!incremental && (
             <Box paddingBottom={4}>
-              <TranslationProgress
-                total={bulkProgress.total}
-                completed={bulkProgress.completed}
-                failed={bulkProgress.failed}
-                status={bulkProgress.status}
-              />
+              <Box padding={3} background="warning100" hasRadius>
+                <Typography variant="pi" textColor="warning700">
+                  {formatMessage({
+                    id: getTrad("dashboard.retranslateWarning"),
+                    defaultMessage:
+                      "Warning: All existing translations will be overwritten. This will retranslate all content, not just new strings.",
+                  })}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+
+          {isBulkRunning && bulkProgress ? (
+            <Box paddingBottom={4}>
+              <Box padding={3} hasRadius>
+                <Flex direction="column" gap={2} alignItems="stretch">
+                  <TranslationProgress
+                    total={bulkProgress.total}
+                    completed={bulkProgress.completed}
+                    failed={bulkProgress.failed}
+                    status={bulkProgress.status}
+                  />
+                  <Typography variant="pi">
+                    {formatMessage({
+                      id: getTrad("dashboard.inProgressMessage"),
+                      defaultMessage:
+                        "Translation in progress. AI translation takes time as the AI processes your content. The app translates in real-time and does not store your content on our servers. Please do not leave this page until translation is complete.",
+                    })}
+                  </Typography>
+                </Flex>
+              </Box>
+            </Box>
+          ) : (
+            <Box paddingBottom={4}>
+              <Box padding={3} hasRadius>
+                <Flex direction="column" gap={1} alignItems="stretch">
+                  <Typography variant="pi">
+                    {formatMessage({
+                      id: getTrad("dashboard.infoMessage"),
+                      defaultMessage:
+                        "Whenever you add new content, run auto-translation with Incremental mode enabled, only new untranslated strings are processed. This allows you to keep manual translations while still benefiting from AI translation for new content.",
+                    })}
+                  </Typography>
+                  <Typography variant="pi">
+                    {formatMessage({
+                      id: getTrad("dashboard.infoMessageAI"),
+                      defaultMessage:
+                        "Our AI translator understands your UI context, preserves formatting and structure, and follows grammar and plural form rules. It produces natural, human-like translations.",
+                    })}
+                  </Typography>
+                </Flex>
+              </Box>
             </Box>
           )}
 

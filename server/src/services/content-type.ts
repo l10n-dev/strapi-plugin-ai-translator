@@ -19,11 +19,11 @@ export interface ContentTypeWithStats extends ContentTypeInfo {
 }
 
 const TRANSLATABLE_FIELD_TYPES = new Set([
-  'string',
-  'text',
-  'richtext',
-  'blocks',
-  'email',
+  "string",
+  "text",
+  "richtext",
+  "blocks",
+  "email",
 ]);
 
 export default ({ strapi }: { strapi: any }) => ({
@@ -31,13 +31,15 @@ export default ({ strapi }: { strapi: any }) => ({
     const result: ContentTypeInfo[] = [];
 
     for (const [uid, contentType] of Object.entries<any>(strapi.contentTypes)) {
-      if (!uid.startsWith('api::')) continue;
+      if (!uid.startsWith("api::")) continue;
       if (!contentType.attributes?.locale) continue;
 
       const localizableFields: LocalizableField[] = [];
 
-      for (const [fieldName, fieldDef] of Object.entries<any>(contentType.attributes)) {
-        if (fieldName === 'locale' || fieldName === 'localizations') continue;
+      for (const [fieldName, fieldDef] of Object.entries<any>(
+        contentType.attributes,
+      )) {
+        if (fieldName === "locale" || fieldName === "localizations") continue;
 
         const isLocalized = fieldDef.pluginOptions?.i18n?.localized === true;
         if (!isLocalized) continue;
@@ -56,9 +58,12 @@ export default ({ strapi }: { strapi: any }) => ({
       result.push({
         uid,
         kind: contentType.kind,
-        displayName: contentType.info?.displayName || contentType.info?.singularName || uid,
-        singularName: contentType.info?.singularName || '',
-        pluralName: contentType.info?.pluralName || '',
+        displayName:
+          contentType.info?.displayName ||
+          contentType.info?.singularName ||
+          uid,
+        singularName: contentType.info?.singularName || "",
+        pluralName: contentType.info?.pluralName || "",
         localizableFields,
       });
     }
@@ -67,13 +72,15 @@ export default ({ strapi }: { strapi: any }) => ({
   },
 
   async getDefaultLocale(): Promise<string> {
-    const i18nLocaleService = strapi.plugin('i18n').service('locales');
+    const i18nLocaleService = strapi.plugin("i18n").service("locales");
     const defaultCode = await i18nLocaleService.getDefaultLocale();
-    return defaultCode || 'en';
+    return defaultCode || "en";
   },
 
-  async getLocales(): Promise<Array<{ code: string; name: string; isDefault: boolean }>> {
-    const i18nLocaleService = strapi.plugin('i18n').service('locales');
+  async getLocales(): Promise<
+    Array<{ code: string; name: string; isDefault: boolean }>
+  > {
+    const i18nLocaleService = strapi.plugin("i18n").service("locales");
     const locales = await i18nLocaleService.find();
     const decorated = await i18nLocaleService.setIsDefault(locales);
     return decorated.map((l: any) => ({
@@ -85,24 +92,38 @@ export default ({ strapi }: { strapi: any }) => ({
 
   async getTranslationStatus(
     uid: string,
-    targetLocale: string
+    targetLocale: string,
   ): Promise<{ totalEntries: number; translatedEntries: number }> {
     const defaultLocale = await this.getDefaultLocale();
 
     const sourceEntries = await strapi.documents(uid).findMany({
       locale: defaultLocale,
       limit: 10000,
-      fields: ['documentId'],
+      fields: ["documentId", "updatedAt"],
     });
 
     const targetEntries = await strapi.documents(uid).findMany({
       locale: targetLocale,
       limit: 10000,
-      fields: ['documentId'],
+      fields: ["documentId", "updatedAt"],
     });
 
-    const targetDocIds = new Set(targetEntries.map((e: any) => e.documentId));
-    const translatedCount = sourceEntries.filter((e: any) => targetDocIds.has(e.documentId)).length;
+    const targetByDocId = new Map(
+      targetEntries.map((e: any) => [e.documentId, e.updatedAt]),
+    );
+
+    let translatedCount = 0;
+    for (const source of sourceEntries) {
+      const targetUpdatedAt = targetByDocId.get(source.documentId) as
+        | string
+        | undefined;
+      if (
+        targetUpdatedAt &&
+        new Date(targetUpdatedAt) >= new Date(source.updatedAt as string)
+      ) {
+        translatedCount++;
+      }
+    }
 
     return {
       totalEntries: sourceEntries.length,
@@ -111,7 +132,7 @@ export default ({ strapi }: { strapi: any }) => ({
   },
 
   async getContentTypesWithStats(
-    targetLocale: string
+    targetLocale: string,
   ): Promise<ContentTypeWithStats[]> {
     const contentTypes = this.getI18nContentTypes();
     const results: ContentTypeWithStats[] = [];
@@ -127,20 +148,21 @@ export default ({ strapi }: { strapi: any }) => ({
   async getEntries(
     uid: string,
     targetLocale: string,
-    params?: { page?: number; pageSize?: number; search?: string }
+    params?: { page?: number; pageSize?: number; search?: string },
   ) {
     const defaultLocale = await this.getDefaultLocale();
     const contentTypes = this.getI18nContentTypes();
     const ctInfo = contentTypes.find((ct) => ct.uid === uid);
-    if (!ctInfo) throw new Error(`Content type ${uid} not found or not i18n-enabled`);
+    if (!ctInfo)
+      throw new Error(`Content type ${uid} not found or not i18n-enabled`);
 
     const localizableFieldNames = ctInfo.localizableFields.map((f) => f.name);
-    const fieldsToSelect = ['documentId', ...localizableFieldNames];
+    const fieldsToSelect = ["documentId", ...localizableFieldNames];
 
     const filters: any = {};
     if (params?.search) {
       const firstStringField = ctInfo.localizableFields.find(
-        (f) => f.type === 'string'
+        (f) => f.type === "string",
       );
       if (firstStringField) {
         filters[firstStringField.name] = { $containsi: params.search };
@@ -171,8 +193,8 @@ export default ({ strapi }: { strapi: any }) => ({
       const fields: Record<string, { source: string; target: string }> = {};
       for (const fieldName of localizableFieldNames) {
         fields[fieldName] = {
-          source: source[fieldName] ?? '',
-          target: target?.[fieldName] ?? '',
+          source: source[fieldName] ?? "",
+          target: target?.[fieldName] ?? "",
         };
       }
 
@@ -196,10 +218,11 @@ export default ({ strapi }: { strapi: any }) => ({
     const defaultLocale = await this.getDefaultLocale();
     const contentTypes = this.getI18nContentTypes();
     const ctInfo = contentTypes.find((ct) => ct.uid === uid);
-    if (!ctInfo) throw new Error(`Content type ${uid} not found or not i18n-enabled`);
+    if (!ctInfo)
+      throw new Error(`Content type ${uid} not found or not i18n-enabled`);
 
     const localizableFieldNames = ctInfo.localizableFields.map((f) => f.name);
-    const fieldsToSelect = ['documentId', ...localizableFieldNames];
+    const fieldsToSelect = ["documentId", ...localizableFieldNames];
 
     const source = await strapi.documents(uid).findOne({
       documentId,
@@ -222,8 +245,8 @@ export default ({ strapi }: { strapi: any }) => ({
     const fields: Record<string, { source: string; target: string }> = {};
     for (const fieldName of localizableFieldNames) {
       fields[fieldName] = {
-        source: source[fieldName] ?? '',
-        target: target?.[fieldName] ?? '',
+        source: source[fieldName] ?? "",
+        target: target?.[fieldName] ?? "",
       };
     }
 

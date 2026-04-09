@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useReducer } from 'react';
+import { useState, useEffect, useCallback, useReducer } from "react";
 import {
   Box,
   Button,
@@ -6,23 +6,24 @@ import {
   Typography,
   TextInput,
   Divider,
-  Grid,
-} from '@strapi/design-system';
-import { Page, Layouts, useNotification } from '@strapi/strapi/admin';
-import { Check, ArrowLeft } from '@strapi/icons';
-import { useIntl } from 'react-intl';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from 'react-query';
-import { useFetchClient } from '@strapi/strapi/admin';
-import { getTrad } from '../utils/getTrad';
-import { usePluginSettings } from '../hooks/usePluginSettings';
-import { useTranslation } from '../hooks/useTranslation';
-import { useLocales } from '../hooks/useLocales';
-import { fetchEntries } from '../utils/api';
-import { LanguageSelector } from '../components/LanguageSelector';
-import { QuotaDisplay } from '../components/QuotaDisplay';
-import { EntryList } from '../components/EntryList';
-import { FieldEditor } from '../components/FieldEditor';
+  Link,
+} from "@strapi/design-system";
+import { Page, Layouts, useNotification } from "@strapi/strapi/admin";
+import { Check, ArrowLeft } from "@strapi/icons";
+import { useIntl } from "react-intl";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "react-query";
+import { useFetchClient } from "@strapi/strapi/admin";
+import { URLS } from "ai-l10n-core";
+import { getTrad } from "../utils/getTrad";
+import { usePluginSettings } from "../hooks/usePluginSettings";
+import { useTranslation } from "../hooks/useTranslation";
+import { useLocales } from "../hooks/useLocales";
+import { fetchEntries } from "../utils/api";
+import { LanguageSelector } from "../components/LanguageSelector";
+import { QuotaDisplay } from "../components/QuotaDisplay";
+import { EntryList } from "../components/EntryList";
+import { FieldEditor } from "../components/FieldEditor";
 
 interface FieldValues {
   source: string;
@@ -38,11 +39,15 @@ interface Entry {
 }
 
 type DraftAction =
-  | { type: 'SET_FIELD'; documentId: string; fieldName: string; value: string }
-  | { type: 'SET_TRANSLATED'; documentId: string; translations: Record<string, string> }
-  | { type: 'REVERT_FIELD'; documentId: string; fieldName: string }
-  | { type: 'REVERT_ALL' }
-  | { type: 'MARK_SAVED'; documentIds: string[] };
+  | { type: "SET_FIELD"; documentId: string; fieldName: string; value: string }
+  | {
+      type: "SET_TRANSLATED";
+      documentId: string;
+      translations: Record<string, string>;
+    }
+  | { type: "REVERT_FIELD"; documentId: string; fieldName: string }
+  | { type: "REVERT_ALL" }
+  | { type: "MARK_SAVED"; documentIds: string[] };
 
 interface DraftState {
   changes: Record<string, Record<string, string>>; // documentId -> fieldName -> value
@@ -50,16 +55,19 @@ interface DraftState {
 
 function draftReducer(state: DraftState, action: DraftAction): DraftState {
   switch (action.type) {
-    case 'SET_FIELD': {
+    case "SET_FIELD": {
       const docChanges = { ...state.changes[action.documentId] };
       docChanges[action.fieldName] = action.value;
       return { changes: { ...state.changes, [action.documentId]: docChanges } };
     }
-    case 'SET_TRANSLATED': {
-      const docChanges = { ...state.changes[action.documentId], ...action.translations };
+    case "SET_TRANSLATED": {
+      const docChanges = {
+        ...state.changes[action.documentId],
+        ...action.translations,
+      };
       return { changes: { ...state.changes, [action.documentId]: docChanges } };
     }
-    case 'REVERT_FIELD': {
+    case "REVERT_FIELD": {
       const docChanges = { ...state.changes[action.documentId] };
       delete docChanges[action.fieldName];
       if (Object.keys(docChanges).length === 0) {
@@ -69,9 +77,9 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
       }
       return { changes: { ...state.changes, [action.documentId]: docChanges } };
     }
-    case 'REVERT_ALL':
+    case "REVERT_ALL":
       return { changes: {} };
-    case 'MARK_SAVED': {
+    case "MARK_SAVED": {
       const next = { ...state.changes };
       for (const docId of action.documentIds) {
         delete next[docId];
@@ -85,7 +93,7 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
 
 export const Editor = () => {
   const { uid: rawUid } = useParams<{ uid: string }>();
-  const uid = rawUid ? decodeURIComponent(rawUid) : '';
+  const uid = rawUid ? decodeURIComponent(rawUid) : "";
   const navigate = useNavigate();
   const { formatMessage } = useIntl();
   const { toggleNotification } = useNotification();
@@ -96,12 +104,18 @@ export const Editor = () => {
   const { data: locales } = useLocales();
   const { translate, save } = useTranslation();
 
-  const [targetLocale, setTargetLocale] = useState('');
-  const [selectedDocumentId, setSelectedDocumentId] = useState<string | undefined>();
-  const [search, setSearch] = useState('');
-  const [translatingField, setTranslatingField] = useState<string | undefined>();
+  const [targetLocale, setTargetLocale] = useState("");
+  const [selectedDocumentId, setSelectedDocumentId] = useState<
+    string | undefined
+  >();
+  const [search, setSearch] = useState("");
+  const [translatingField, setTranslatingField] = useState<
+    string | undefined
+  >();
   const [lastCharsUsed, setLastCharsUsed] = useState<number | undefined>();
-  const [remainingBalance, setRemainingBalance] = useState<number | undefined>();
+  const [remainingBalance, setRemainingBalance] = useState<
+    number | undefined
+  >();
   const [draftState, dispatch] = useReducer(draftReducer, { changes: {} });
 
   // Initialize target locale
@@ -120,15 +134,17 @@ export const Editor = () => {
     isLoading,
     refetch: refetchEntries,
   } = useQuery(
-    ['ai-translator', 'entries', uid, targetLocale, search],
+    ["ai-translator", "entries", uid, targetLocale, search],
     async () => {
       if (!uid || !targetLocale) return null;
-      return fetchEntries(client, uid, targetLocale, { search: search || undefined });
+      return fetchEntries(client, uid, targetLocale, {
+        search: search || undefined,
+      });
     },
     {
       enabled: !!uid && !!targetLocale,
       refetchOnWindowFocus: false,
-    }
+    },
   );
 
   const entries: Entry[] = entriesData?.entries || [];
@@ -142,19 +158,26 @@ export const Editor = () => {
     }
   }, [entries, selectedDocumentId]);
 
-  const selectedEntry = entries.find((e) => e.documentId === selectedDocumentId);
+  const selectedEntry = entries.find(
+    (e) => e.documentId === selectedDocumentId,
+  );
   const modifiedDocumentIds = new Set(Object.keys(draftState.changes));
 
   const primaryFieldName = localizableFields.find(
-    (f: any) => f.type === 'string'
+    (f: any) => f.type === "string",
   )?.name;
 
   const handleFieldChange = useCallback(
     (fieldName: string, value: string) => {
       if (!selectedDocumentId) return;
-      dispatch({ type: 'SET_FIELD', documentId: selectedDocumentId, fieldName, value });
+      dispatch({
+        type: "SET_FIELD",
+        documentId: selectedDocumentId,
+        fieldName,
+        value,
+      });
     },
-    [selectedDocumentId]
+    [selectedDocumentId],
   );
 
   const handleTranslateField = useCallback(
@@ -172,47 +195,57 @@ export const Editor = () => {
         },
         {
           onSuccess: (result) => {
-            if (result.status === 'success' && result.translations) {
+            if (result.status === "success" && result.translations) {
               dispatch({
-                type: 'SET_TRANSLATED',
+                type: "SET_TRANSLATED",
                 documentId: selectedDocumentId,
                 translations: result.translations,
               });
               setLastCharsUsed(result.charsUsed);
               setRemainingBalance(result.remainingBalance);
-            } else if (result.reason === 'insufficientBalance') {
+            } else if (result.reason === "insufficientBalance") {
               toggleNotification({
-                type: 'warning',
+                type: "warning",
                 message: formatMessage({
-                  id: getTrad('notification.insufficientBalance'),
-                  defaultMessage:
-                    'Insufficient balance. Purchase more at https://l10n.dev/#pricing',
+                  id: getTrad("notification.insufficientBalance"),
+                  defaultMessage: `Insufficient balance. Purchase more at ${URLS.PRICING}`,
                 }),
               });
             } else {
               toggleNotification({
-                type: 'warning',
-                message: result.message || 'Translation failed',
+                type: "warning",
+                message: result.message || "Translation failed",
               });
             }
             setTranslatingField(undefined);
           },
           onError: (err) => {
-            toggleNotification({ type: 'warning', message: err.message });
+            toggleNotification({ type: "warning", message: err.message });
             setTranslatingField(undefined);
           },
-        }
+        },
       );
     },
-    [selectedDocumentId, uid, targetLocale, translate, toggleNotification, formatMessage]
+    [
+      selectedDocumentId,
+      uid,
+      targetLocale,
+      translate,
+      toggleNotification,
+      formatMessage,
+    ],
   );
 
   const handleRevertField = useCallback(
     (fieldName: string) => {
       if (!selectedDocumentId) return;
-      dispatch({ type: 'REVERT_FIELD', documentId: selectedDocumentId, fieldName });
+      dispatch({
+        type: "REVERT_FIELD",
+        documentId: selectedDocumentId,
+        fieldName,
+      });
     },
-    [selectedDocumentId]
+    [selectedDocumentId],
   );
 
   const handleSaveAll = useCallback(async () => {
@@ -232,24 +265,36 @@ export const Editor = () => {
         });
       }
 
-      dispatch({ type: 'MARK_SAVED', documentIds: docIds });
-      queryClient.invalidateQueries(['ai-translator']);
+      dispatch({ type: "MARK_SAVED", documentIds: docIds });
+      queryClient.invalidateQueries(["ai-translator"]);
       refetchEntries();
 
       toggleNotification({
-        type: 'success',
+        type: "success",
         message: formatMessage({
-          id: getTrad('notification.saved'),
-          defaultMessage: 'Translations saved successfully',
+          id: getTrad("notification.saved"),
+          defaultMessage: "Translations saved successfully",
         }),
       });
     } catch (err: any) {
-      toggleNotification({ type: 'warning', message: err.message || 'Save failed' });
+      toggleNotification({
+        type: "warning",
+        message: err.message || "Save failed",
+      });
     }
-  }, [draftState.changes, uid, targetLocale, save, queryClient, refetchEntries, toggleNotification, formatMessage]);
+  }, [
+    draftState.changes,
+    uid,
+    targetLocale,
+    save,
+    queryClient,
+    refetchEntries,
+    toggleNotification,
+    formatMessage,
+  ]);
 
   const handleCancel = useCallback(() => {
-    dispatch({ type: 'REVERT_ALL' });
+    dispatch({ type: "REVERT_ALL" });
   }, []);
 
   if (isLoading) return <Page.Loading />;
@@ -262,21 +307,35 @@ export const Editor = () => {
     <Layouts.Root>
       <Page.Title>
         {formatMessage(
-          { id: getTrad('editor.title'), defaultMessage: 'Edit: {name}' },
-          { name: contentType?.displayName || uid }
+          { id: getTrad("editor.title"), defaultMessage: "Edit: {name}" },
+          { name: contentType?.displayName || uid },
         )}
       </Page.Title>
       <Page.Main>
         <Layouts.Header
           title={contentType?.displayName || uid}
           subtitle={formatMessage(
-            { id: getTrad('editor.subtitle'), defaultMessage: '{count} entries' },
-            { count: entries.length }
+            {
+              id: getTrad("editor.subtitle"),
+              defaultMessage: "{count} entries",
+            },
+            { count: entries.length },
           )}
           navigationAction={
-            <Button variant="ghost" startIcon={<ArrowLeft />} onClick={() => navigate('..')}>
-              {formatMessage({ id: getTrad('editor.back'), defaultMessage: 'Back' })}
-            </Button>
+            <Link
+              style={{
+                justifyContent: "flex-start",
+                paddingLeft: 0,
+                width: "min-content",
+              }}
+              startIcon={<ArrowLeft />}
+              onClick={() => navigate("..")}
+            >
+              {formatMessage({
+                id: getTrad("editor.back"),
+                defaultMessage: "Back",
+              })}
+            </Link>
           }
           primaryAction={
             <Flex gap={2}>
@@ -286,8 +345,8 @@ export const Editor = () => {
                 disabled={modifiedDocumentIds.size === 0}
               >
                 {formatMessage({
-                  id: getTrad('editor.cancelChanges'),
-                  defaultMessage: 'Cancel changes',
+                  id: getTrad("editor.cancelChanges"),
+                  defaultMessage: "Cancel changes",
                 })}
               </Button>
               <Button
@@ -298,10 +357,10 @@ export const Editor = () => {
               >
                 {formatMessage(
                   {
-                    id: getTrad('editor.save'),
-                    defaultMessage: 'Save ({count})',
+                    id: getTrad("editor.save"),
+                    defaultMessage: "Save ({count})",
                   },
-                  { count: modifiedDocumentIds.size }
+                  { count: modifiedDocumentIds.size },
                 )}
               </Button>
             </Flex>
@@ -310,7 +369,7 @@ export const Editor = () => {
 
         <Layouts.Content>
           <Box paddingBottom={4}>
-            <Flex gap={4} alignItems="flex-end" wrap="wrap">
+            <Flex gap={4} justifyContent="space-between" alignItems="center">
               {locales && (
                 <LanguageSelector
                   locales={locales}
@@ -319,27 +378,29 @@ export const Editor = () => {
                 />
               )}
               <QuotaDisplay remainingBalance={remainingBalance} />
-              <Box style={{ flex: 1 }}>
-                <TextInput
-                  placeholder={formatMessage({
-                    id: getTrad('editor.search'),
-                    defaultMessage: 'Search entries...',
-                  })}
-                  value={search}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-                  size="S"
-                  aria-label="Search"
-                />
-              </Box>
             </Flex>
           </Box>
 
           <Divider />
 
           <Box paddingTop={4}>
-            <Flex gap={4} alignItems="flex-start">
+            <Flex gap={4} alignItems="flex-start" style={{ width: "100%" }}>
               {/* Left sidebar: entry list */}
-              <Box style={{ width: '320px', flexShrink: 0 }}>
+              <Box style={{ width: "320px", flexShrink: 0 }}>
+                <Box style={{ flex: 1 }} marginBottom={2}>
+                  <TextInput
+                    placeholder={formatMessage({
+                      id: getTrad("editor.search"),
+                      defaultMessage: "Search entries...",
+                    })}
+                    value={search}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setSearch(e.target.value)
+                    }
+                    size="S"
+                    aria-label="Search"
+                  />
+                </Box>
                 <EntryList
                   entries={entries}
                   selectedDocumentId={selectedDocumentId}
@@ -366,8 +427,9 @@ export const Editor = () => {
                   <Box padding={6} background="neutral100" hasRadius>
                     <Typography variant="omega" textColor="neutral500">
                       {formatMessage({
-                        id: getTrad('editor.selectEntry'),
-                        defaultMessage: 'Select an entry from the list to edit translations',
+                        id: getTrad("editor.selectEntry"),
+                        defaultMessage:
+                          "Select an entry from the list to edit translations",
                       })}
                     </Typography>
                   </Box>
