@@ -2,7 +2,7 @@
   "name": "strapi-plugin-ai-translator",
   "version": "1.0.0",
   "description": "Strapi v5 plugin to translate i18n content with l10n.dev AI translation service directly from the Admin Panel",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "author": {
     "name": "l10n.dev"
   },

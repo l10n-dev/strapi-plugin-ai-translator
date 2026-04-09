@@ -482,7 +482,7 @@ export const Dashboard = () => {
                     {formatMessage({
                       id: getTrad("dashboard.infoMessageAI"),
                       defaultMessage:
-                        "Our AI translator understands your UI context, preserves formatting and structure, and follows grammar and plural form rules. It produces natural, human-like translations.",
+                        "Our AI translator understands, supports 165 languages, preserves formatting and structure, and follows grammar and plural form rules. It produces natural, human-like translations.",
                     })}
                   </Typography>
                 </Flex>

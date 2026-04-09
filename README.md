@@ -165,4 +165,4 @@ Found a bug or have a feature request? Please open an issue on [GitHub](https://
 
 ## License
 
-[MIT](LICENSE) — see the [LICENSE](LICENSE) file for details.
+[Apache License Version 2.0](LICENSE) — see the [LICENSE](LICENSE) file for details.
