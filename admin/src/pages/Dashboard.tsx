@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import type React from "react";
 import { useQueryClient } from "react-query";
 import {
   Box,
@@ -503,6 +504,81 @@ export const Dashboard = () => {
                 translatingUid={translatingUid}
               />
             )}
+          </Box>
+
+          <Box paddingTop={8}>
+            <Divider />
+            <Box paddingTop={4}>
+              <Flex direction="column" gap={2} alignItems="stretch">
+                <Typography variant="pi" textColor="neutral600">
+                  {formatMessage(
+                    {
+                      id: getTrad("footer.welcome"),
+                      defaultMessage:
+                        "Welcome to our plugin powered by l10n.dev! If you have any questions, feel free to email us at <emailLink>support@l10n.dev</emailLink> or <issueLink>create an issue on GitHub</issueLink>.",
+                    },
+                    {
+                      emailLink: (chunks: React.ReactNode) => (
+                        <Link href="mailto:support@l10n.dev">{chunks}</Link>
+                      ),
+                      issueLink: (chunks: React.ReactNode) => (
+                        <Link
+                          href="https://github.com/l10n-dev/strapi-plugin-ai-translator/issues"
+                          isExternal
+                        >
+                          {chunks}
+                        </Link>
+                      ),
+                    },
+                  )}
+                </Typography>
+                <Typography variant="pi" textColor="neutral600">
+                  {formatMessage(
+                    {
+                      id: getTrad("footer.star"),
+                      defaultMessage:
+                        "Enjoying the plugin? <starLink>★ Star the repository</starLink>",
+                    },
+                    {
+                      starLink: (chunks: React.ReactNode) => (
+                        <Link
+                          href="https://github.com/l10n-dev/strapi-plugin-ai-translator"
+                          isExternal
+                        >
+                          {chunks}
+                        </Link>
+                      ),
+                    },
+                  )}
+                </Typography>
+                <Flex gap={4} wrap="wrap">
+                  <Link href="https://l10n.dev/terms-of-service" isExternal>
+                    <Typography variant="pi">
+                      {formatMessage({
+                        id: getTrad("footer.terms"),
+                        defaultMessage: "Terms of Service",
+                      })}
+                    </Typography>
+                  </Link>
+                  <Link href="https://l10n.dev/privacy-policy" isExternal>
+                    <Typography variant="pi">
+                      {formatMessage({
+                        id: getTrad("footer.privacy"),
+                        defaultMessage: "Privacy Policy",
+                      })}
+                    </Typography>
+                  </Link>
+                  <Link href="https://l10n.dev/ws/billing" isExternal>
+                    <Typography variant="pi">
+                      {formatMessage({
+                        id: getTrad("footer.billing"),
+                        defaultMessage: "Billing",
+                      })}
+                    </Typography>
+                  </Link>
+                </Flex>
+              </Flex>
+            </Box>
           </Box>
         </Layouts.Content>
       </Page.Main>
