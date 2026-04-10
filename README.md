@@ -23,11 +23,9 @@ Translate your Strapi v5 i18n content with l10n.dev [AI localization](https://l1
 
 ## Screenshots
 
-> _Screenshots will be added here._
-
 | Dashboard | Side-by-Side Editor |
 |-----------|-------------------|
-| ![Dashboard](docs/screenshots/dashboard-placeholder.png) | ![Editor](docs/screenshots/editor-placeholder.png) |
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Editor](docs/screenshots/editor.jpg) |
 
 ---
 
