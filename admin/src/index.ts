@@ -1,6 +1,7 @@
 import { Earth } from "@strapi/icons";
 import PLUGIN_ID from "./pluginId";
 import { getTrad } from "./utils/getTrad";
+import { TranslateButton } from "./components/TranslateDocumentAction";
 
 export default {
   register(app: any) {
@@ -23,7 +24,15 @@ export default {
     });
   },
 
-  bootstrap(app: any) {},
+  bootstrap(app: any) {
+    const cm = app.getPlugin("content-manager");
+    if (cm) {
+      cm.injectComponent("editView", "right-links", {
+        name: "ai-translator-translate",
+        Component: TranslateButton,
+      });
+    }
+  },
 
   async registerTrads({ locales }: { locales: string[] }) {
     return Promise.all(

@@ -53,5 +53,7 @@
   "ai-translator.footer.star": "Enjoying the plugin? <starLink>★ Star the repository</starLink>",
   "ai-translator.footer.terms": "Terms of Service",
   "ai-translator.footer.privacy": "Privacy Policy",
-  "ai-translator.footer.billing": "Billing"
+  "ai-translator.footer.billing": "Billing",
+  "ai-translator.contentManager.translateFrom": "Translate from {locale}",
+  "ai-translator.contentManager.translated": "Translation applied. Review and save when ready."
 }

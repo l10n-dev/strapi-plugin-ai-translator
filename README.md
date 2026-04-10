@@ -1,8 +1,8 @@
-# Strapi Plugin — AI Translator (l10n.dev)
+# Strapi Plugin - AI Translator (l10n.dev)
 
-Translate your Strapi v5 i18n content with [l10n.dev](https://l10n.dev) AI translation service — directly from the Admin Panel. Supports bulk translation, per-field translation, and a side-by-side editor for reviewing and editing results.
+Translate your Strapi v5 i18n content with l10n.dev [AI localization](https://l10n.dev) service - directly from the Admin Panel. Supports bulk auto translation, per-field translation, and a side-by-side editor for reviewing and editing results. The AI engine understands context, supports 165 languages, preserves formatting and structure, and follows grammar and plural form rules - producing natural, human-like translations.
 
-**30,000 characters free every month** — no credit card required.
+**30,000 characters free every month** - no credit card required.
 
 > **Compatibility:** Strapi v5 only (v5.0.0+)
 
@@ -12,10 +12,11 @@ Translate your Strapi v5 i18n content with [l10n.dev](https://l10n.dev) AI trans
 
 - **Main Dashboard** — See all your i18n-enabled Content Types at a glance with translation progress per target language.
 - **Bulk Auto-translate** — Select multiple Content Types and translate them all with one click. Parallel processing with real-time progress bar.
+- **Translate button in Content Manager** — A "Translate from {language}" button appears directly in the entry edit panel when you switch to a non-default locale. Translate the current entry without leaving the Content Manager.
 - **Side-by-Side Editor** — Click "Edit" on any Content Type to open a split view: read-only source on the left, editable target on the right. Translate, revert, or manually edit per field.
 - **Per-field Translate** — Translate individual fields without touching the rest.
-- **Incremental Mode** — Only translate new/changed strings, saving your character quota.
-- **Live Quota Display** — See your remaining character balance update in real time after each translation.
+- **Incremental Mode** — Only translate new/changed entries, saving your character quota.
+- **Usage Tracking** — Monitor usage and remaining balance.
 - **Persistent Preferences** — Selected target language, incremental toggle, and category selections are saved across sessions.
 
 ---
@@ -67,18 +68,18 @@ npm run develop
 
 1. Go to [l10n.dev/ws/keys](https://l10n.dev/ws/keys) and create a free API key.
 2. Open the Strapi Admin Panel and navigate to **L10n.dev - AI Translator** in the sidebar.
-3. You will see a **"Set up your API Key"** banner at the top of the page.
-4. Paste your key into the **"l10n.dev API Key"** field and click **"Save Key"**.
-5. The banner disappears and the plugin is ready to use.
+3. You will see a **"Paste your l10n.dev API key to start translating"** input at the top of the page.
+4. Paste your key into the field and click **"Save"**.
+5. The plugin is ready to use.
 
-> To update the key later, find the masked key display at the top of the dashboard and click **"Change API Key"**.
+> To update the key later, find the **"API key configured"** label at the top of the dashboard and click **"Change"**.
 
 ### Plugin Settings (stored in Strapi)
 
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `apiKey` | Your l10n.dev API key | _(empty)_ |
-| `incremental` | Only translate new/changed strings | `true` |
+| `incremental` | Only translate new/changed entries | `true` |
 | `lastTargetLocale` | Remembers your last selected target language | _(auto)_ |
 | `selectedCategories` | Remembers which Content Types are checked for bulk translate | `[]` |
 
@@ -102,6 +103,16 @@ All settings are managed through the Admin Panel UI — no file-based configurat
 4. Check the boxes for the Content Types you want to translate, then click **"Auto-translate"**.
 5. A progress bar shows real-time translation status.
 
+### Translate from Content Manager
+
+1. Open any i18n-enabled Content Type entry in the **Content Manager**.
+2. Switch to a **non-default locale** using the locale picker in the top-right.
+3. A **"Translate from {language}"** button appears in the right panel (e.g. "Translate from English").
+4. Click it — all localizable fields are translated.
+5. Review and save when ready.
+
+> The button is hidden when you are already viewing the default locale.
+
 ### Side-by-Side Editor
 
 1. Click **"Edit"** (pencil icon) on any Content Type row.
@@ -112,7 +123,7 @@ All settings are managed through the Admin Panel UI — no file-based configurat
 
 ### Incremental Mode
 
-When enabled, only fields that don't have a target translation yet (or differ from the source) are sent to the API. This saves your character quota when re-translating content that has already been partially translated.
+When enabled, entries that are already up-to-date are skipped entirely, saving your character quota. For entries where the source has been updated since the last translation, all fields are retranslated — Strapi does not track which specific field changed. To translate or edit a single field independently, open the entry in the [Editor](#side-by-side-editor).
 
 ---
 
@@ -122,13 +133,13 @@ All endpoints are admin-authenticated (`admin::isAuthenticatedAdmin`) and prefix
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/settings` | Get plugin settings (API key masked) |
+| `GET` | `/settings` | Get plugin settings |
 | `PUT` | `/settings` | Update plugin settings |
 | `GET` | `/content-types` | List i18n Content Types with translation stats |
 | `GET` | `/content-types/:uid/entries` | List entries for a Content Type |
 | `GET` | `/content-types/:uid/entries/:documentId` | Get single entry with source/target fields |
 | `POST` | `/translate` | Translate a single field of an entry |
-| `POST` | `/translate/bulk` | Start bulk translation (auto incremental translation) |
+| `POST` | `/translate/bulk` | Start bulk translation (auto translation) |
 | `POST` | `/translate/save` | Save translated fields to Strapi |
 | `GET` | `/translate/status` | Poll bulk translation progress |
 | `POST` | `/translate/cancel` | Cancel a running bulk translation |
@@ -142,7 +153,7 @@ All endpoints are admin-authenticated (`admin::isAuthenticatedAdmin`) and prefix
 | Strapi | `^5.0.0` |
 | Node.js | `>=18.0.0` |
 | `@strapi/design-system` | `^2.0.0` |
-| `ai-l10n-core` | `^1.4.0` |
+| `ai-l10n-core` | `^1.4.1` |
 
 > This plugin is **Strapi v5 only**. It is not compatible with Strapi v4.
 
@@ -151,15 +162,37 @@ All endpoints are admin-authenticated (`admin::isAuthenticatedAdmin`) and prefix
 ## How it works
 
 1. The plugin introspects your Strapi content types at runtime to find those with i18n localization enabled.
-2. For each localizable field (`string`, `text`, `richtext`, `blocks`, `email`), it extracts the source-language value and sends it to the [l10n.dev](https://l10n.dev) API via the [`ai-l10n-core`](https://www.npmjs.com/package/ai-l10n-core) client library.
+2. For each localizable field (`string`, `text`, `richtext`, `blocks`, `email`), it extracts the source-language value and sends it to the [ai translation API](https://api.l10n.dev/doc) via the [`ai-l10n-core`](https://www.npmjs.com/package/ai-l10n-core) client library.
 3. Translated fields are saved as **draft** entries in Strapi via the Document Service API. You publish them using Strapi's native publish workflow.
 4. The API key and preferences are stored securely in Strapi's plugin store — never exposed to the client in full.
 
 ---
 
-## Submitting Issues
+## Pricing
 
-Found a bug or have a feature request? Please open an issue on [GitHub](https://github.com/l10n-dev/strapi-plugin-ai-translator/issues).
+- **Free tier** — 30,000 characters free every month, no credit card required.
+- **Pay-as-you-go** — Affordable character-based pricing with no subscription required.
+- **Current rates** — Visit [l10n.dev/#pricing](https://l10n.dev/#pricing) for up-to-date pricing.
+
+---
+
+## Privacy & Security
+
+- **Secure API keys** — Stored in Strapi's plugin store, never exposed to the browser in full.
+- **No data retention** — Source text and translations are not stored on l10n.dev servers beyond the time needed to process the request.
+- **Encrypted communication** — All API calls use HTTPS.
+- **Privacy first** — Built by developers for developers, with privacy, reliability, and quality as core priorities.
+
+---
+
+## Support
+
+| | |
+|---|---|
+| 📧 Email | [support@l10n.dev](mailto:support@l10n.dev) |
+| 🐛 Issues | [GitHub Issues](https://github.com/l10n-dev/strapi-plugin-ai-translator/issues) |
+| 📚 API Docs | [api.l10n.dev/doc](https://api.l10n.dev/doc) |
+| 🌐 Website | [l10n.dev](https://l10n.dev) |
 
 ---
 
