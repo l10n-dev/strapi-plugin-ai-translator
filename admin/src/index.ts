@@ -1,6 +1,6 @@
-import { Earth } from '@strapi/icons';
-import PLUGIN_ID from './pluginId';
-import { getTrad } from './utils/getTrad';
+import { Earth } from "@strapi/icons";
+import PLUGIN_ID from "./pluginId";
+import { getTrad } from "./utils/getTrad";
 
 export default {
   register(app: any) {
@@ -8,11 +8,11 @@ export default {
       to: `plugins/${PLUGIN_ID}`,
       icon: Earth,
       intlLabel: {
-        id: getTrad('plugin.name'),
-        defaultMessage: 'L10n.dev - AI Translator',
+        id: getTrad("plugin.name"),
+        defaultMessage: "L10n.dev - AI Translator",
       },
       Component: async () => {
-        const { App } = await import('./pages/App');
+        const { App } = await import("./pages/App");
         return App;
       },
     });
@@ -34,7 +34,7 @@ export default {
         } catch {
           return { data: {}, locale };
         }
-      })
+      }),
     );
   },
 };

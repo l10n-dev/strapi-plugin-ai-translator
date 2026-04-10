@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Strapi Playground",
+      "type": "node",
+      "request": "launch",
+      "preLaunchTask": "Build plugin (sourcemap)",
+      "program": "${workspaceFolder}/playground/node_modules/@strapi/strapi/bin/strapi.js",
+      "args": ["develop"],
+      "cwd": "${workspaceFolder}/playground",
+      "sourceMaps": true,
+      "outFiles": [
+        "${workspaceFolder}/dist/server/**/*.js"
+      ],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/dist/**",
+        "!**/node_modules/**"
+      ],
+      "skipFiles": [
+        "<node_internals>/**",
+        "${workspaceFolder}/playground/node_modules/**"
+      ],
+      "autoAttachChildProcesses": true,
+      "serverReadyAction": {
+        "pattern": "Strapi started successfully",
+        "uriFormat": "http://localhost:1337/admin",
+        "action": "openExternally"
+      },
+      "console": "integratedTerminal"
+    }
+  ]
+}

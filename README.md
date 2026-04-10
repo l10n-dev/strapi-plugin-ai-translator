@@ -127,8 +127,8 @@ All endpoints are admin-authenticated (`admin::isAuthenticatedAdmin`) and prefix
 | `GET` | `/content-types` | List i18n Content Types with translation stats |
 | `GET` | `/content-types/:uid/entries` | List entries for a Content Type |
 | `GET` | `/content-types/:uid/entries/:documentId` | Get single entry with source/target fields |
-| `POST` | `/translate` | Translate a single entry |
-| `POST` | `/translate/bulk` | Start bulk translation (background) |
+| `POST` | `/translate` | Translate a single field of an entry |
+| `POST` | `/translate/bulk` | Start bulk translation (auto incremental translation) |
 | `POST` | `/translate/save` | Save translated fields to Strapi |
 | `GET` | `/translate/status` | Poll bulk translation progress |
 | `POST` | `/translate/cancel` | Cancel a running bulk translation |

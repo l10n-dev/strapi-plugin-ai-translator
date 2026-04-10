@@ -1,5 +1,5 @@
-import { Box, Typography, Flex, Badge } from '@strapi/design-system';
-import { styled } from 'styled-components';
+import { Box, Typography, Flex, Badge } from "@strapi/design-system";
+import { styled } from "styled-components";
 
 interface Entry {
   documentId: string;
@@ -19,7 +19,7 @@ const EntryItem = styled(Box)<{ $active?: boolean }>`
   cursor: pointer;
   border-bottom: 1px solid ${({ theme }) => theme.colors.neutral150};
   background: ${({ theme, $active }) =>
-    $active ? theme.colors.primary100 : 'transparent'};
+    $active ? theme.colors.primary100 : "transparent"};
   &:hover {
     background: ${({ theme, $active }) =>
       $active ? theme.colors.primary100 : theme.colors.neutral100};
@@ -36,14 +36,14 @@ export const EntryList = ({
   const getDisplayText = (entry: Entry) => {
     if (primaryFieldName && entry.fields[primaryFieldName]) {
       const val = entry.fields[primaryFieldName].source;
-      if (val) return val.length > 60 ? val.slice(0, 60) + '...' : val;
+      if (val) return val.length > 60 ? val.slice(0, 60) + "..." : val;
     }
     const firstField = Object.values(entry.fields)[0];
     if (firstField?.source) {
       const val = firstField.source;
-      return val.length > 60 ? val.slice(0, 60) + '...' : val;
+      return val.length > 60 ? val.slice(0, 60) + "..." : val;
     }
-    return entry.documentId.slice(0, 12) + '...';
+    return entry.documentId.slice(0, 12) + "...";
   };
 
   return (
@@ -51,7 +51,7 @@ export const EntryList = ({
       background="neutral0"
       hasRadius
       borderColor="neutral150"
-      style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 220px)' }}
+      style={{ overflowY: "auto", maxHeight: "calc(100vh - 270px)" }}
     >
       {entries.map((entry) => (
         <EntryItem
@@ -63,20 +63,34 @@ export const EntryList = ({
           <Flex justifyContent="space-between" alignItems="center">
             <Typography
               variant="omega"
-              textColor={selectedDocumentId === entry.documentId ? 'primary700' : 'neutral800'}
-              fontWeight={selectedDocumentId === entry.documentId ? 'bold' : 'regular'}
+              textColor={
+                selectedDocumentId === entry.documentId
+                  ? "primary700"
+                  : "neutral800"
+              }
+              fontWeight={
+                selectedDocumentId === entry.documentId ? "bold" : "regular"
+              }
               ellipsis
             >
               {getDisplayText(entry)}
             </Typography>
             <Flex gap={1}>
               {modifiedDocumentIds.has(entry.documentId) && (
-                <Badge active backgroundColor="warning100" textColor="warning700">
+                <Badge
+                  active
+                  backgroundColor="warning100"
+                  textColor="warning700"
+                >
                   unsaved
                 </Badge>
               )}
               {!entry.hasTarget && (
-                <Badge active backgroundColor="neutral150" textColor="neutral600">
+                <Badge
+                  active
+                  backgroundColor="neutral150"
+                  textColor="neutral600"
+                >
                   new
                 </Badge>
               )}

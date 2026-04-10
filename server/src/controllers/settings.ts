@@ -1,17 +1,16 @@
 export default ({ strapi }: { strapi: any }) => ({
   async getSettings(ctx: any) {
-    const settingsService = strapi.plugin('ai-translator').service('settings');
+    const settingsService = strapi.plugin("ai-translator").service("settings");
     const settings = await settingsService.getSettings();
     // Never return the full API key to the client — mask it
     ctx.body = {
       ...settings,
-      apiKey: settings.apiKey ? `${'•'.repeat(8)}${settings.apiKey.slice(-4)}` : '',
       hasApiKey: !!settings.apiKey,
     };
   },
 
   async updateSettings(ctx: any) {
-    const settingsService = strapi.plugin('ai-translator').service('settings');
+    const settingsService = strapi.plugin("ai-translator").service("settings");
     const body = ctx.request.body;
     const allowedFields: Record<string, boolean> = {
       apiKey: true,
@@ -30,7 +29,6 @@ export default ({ strapi }: { strapi: any }) => ({
     const settings = await settingsService.updateSettings(updates);
     ctx.body = {
       ...settings,
-      apiKey: settings.apiKey ? `${'•'.repeat(8)}${settings.apiKey.slice(-4)}` : '',
       hasApiKey: !!settings.apiKey,
     };
   },

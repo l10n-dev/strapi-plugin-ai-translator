@@ -20,6 +20,7 @@ import { getTrad } from "../utils/getTrad";
 import { usePluginSettings } from "../hooks/usePluginSettings";
 import { useTranslation } from "../hooks/useTranslation";
 import { useLocales } from "../hooks/useLocales";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { fetchEntries } from "../utils/api";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { QuotaDisplay } from "../components/QuotaDisplay";
@@ -104,15 +105,22 @@ export const Editor = () => {
   const { settings } = usePluginSettings();
   const { data: locales } = useLocales();
   const { translate, save } = useTranslation();
+  const isMobile = useIsMobile();
 
   const [targetLocale, setTargetLocale] = useState("");
   const [selectedDocumentId, setSelectedDocumentId] = useState<
     string | undefined
   >();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(id);
+  }, [search]);
   const [translatingField, setTranslatingField] = useState<
     string | undefined
   >();
+  const [isTranslatingEntry, setIsTranslatingEntry] = useState(false);
   const [lastCharsUsed, setLastCharsUsed] = useState<number | undefined>();
   const [remainingBalance, setRemainingBalance] = useState<
     number | undefined
@@ -135,16 +143,17 @@ export const Editor = () => {
     isLoading,
     refetch: refetchEntries,
   } = useQuery(
-    ["ai-translator", "entries", uid, targetLocale, search],
+    ["ai-translator", "entries", uid, targetLocale, debouncedSearch],
     async () => {
       if (!uid || !targetLocale) return null;
       return fetchEntries(client, uid, targetLocale, {
-        search: search || undefined,
+        search: debouncedSearch || undefined,
       });
     },
     {
       enabled: !!uid && !!targetLocale,
       refetchOnWindowFocus: false,
+      keepPreviousData: true,
     },
   );
 
@@ -180,6 +189,54 @@ export const Editor = () => {
     },
     [selectedDocumentId],
   );
+
+  const handleTranslateEntry = useCallback(async () => {
+    if (!selectedDocumentId || !uid || !targetLocale) return;
+    setIsTranslatingEntry(true);
+    setLastCharsUsed(undefined);
+
+    translate.mutate(
+      { uid, documentId: selectedDocumentId, targetLocale },
+      {
+        onSuccess: (result) => {
+          if (result.status === "success" && result.translations) {
+            dispatch({
+              type: "SET_TRANSLATED",
+              documentId: selectedDocumentId,
+              translations: result.translations,
+            });
+            setLastCharsUsed(result.charsUsed);
+            setRemainingBalance(result.remainingBalance);
+          } else if (result.reason === "insufficientBalance") {
+            toggleNotification({
+              type: "warning",
+              message: formatMessage({
+                id: getTrad("notification.insufficientBalance"),
+                defaultMessage: `Insufficient balance. Purchase more at ${URLS.PRICING}`,
+              }),
+            });
+          } else {
+            toggleNotification({
+              type: "warning",
+              message: result.message || "Translation failed",
+            });
+          }
+          setIsTranslatingEntry(false);
+        },
+        onError: (err) => {
+          toggleNotification({ type: "warning", message: err.message });
+          setIsTranslatingEntry(false);
+        },
+      },
+    );
+  }, [
+    selectedDocumentId,
+    uid,
+    targetLocale,
+    translate,
+    toggleNotification,
+    formatMessage,
+  ]);
 
   const handleTranslateField = useCallback(
     async (fieldName: string) => {
@@ -303,8 +360,7 @@ export const Editor = () => {
   // Block in-app navigation when there are unsaved changes
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      hasUnsavedChanges &&
-      currentLocation.pathname !== nextLocation.pathname,
+      hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname,
   );
 
   // Warn on browser tab/window close
@@ -325,184 +381,200 @@ export const Editor = () => {
 
   return (
     <>
-    <Layouts.Root>
-      <Page.Title>
-        {formatMessage(
-          { id: getTrad("editor.title"), defaultMessage: "Edit: {name}" },
-          { name: contentType?.displayName || uid },
-        )}
-      </Page.Title>
-      <Page.Main>
-        <Layouts.Header
-          title={contentType?.displayName || uid}
-          subtitle={formatMessage(
-            {
-              id: getTrad("editor.subtitle"),
-              defaultMessage: "{count} entries",
-            },
-            { count: entries.length },
+      <Layouts.Root>
+        <Page.Title>
+          {formatMessage(
+            { id: getTrad("editor.title"), defaultMessage: "Edit: {name}" },
+            { name: contentType?.displayName || uid },
           )}
-          navigationAction={
-            <Link
-              style={{
-                justifyContent: "flex-start",
-                paddingLeft: 0,
-                width: "min-content",
-              }}
-              startIcon={<ArrowLeft />}
-              onClick={() => navigate("..")}
-            >
-              {formatMessage({
-                id: getTrad("editor.back"),
-                defaultMessage: "Back",
-              })}
-            </Link>
-          }
-          primaryAction={
-            <Flex gap={2}>
-              <Button
-                variant="tertiary"
-                onClick={handleCancel}
-                disabled={modifiedDocumentIds.size === 0}
+        </Page.Title>
+        <Page.Main>
+          <Layouts.Header
+            title={contentType?.displayName || uid}
+            subtitle={formatMessage(
+              {
+                id: getTrad("editor.subtitle"),
+                defaultMessage: "{count} entries",
+              },
+              { count: entries.length },
+            )}
+            navigationAction={
+              <Link
+                style={{
+                  justifyContent: "flex-start",
+                  paddingLeft: 0,
+                  width: "min-content",
+                }}
+                startIcon={<ArrowLeft />}
+                onClick={() => navigate("..")}
               >
                 {formatMessage({
-                  id: getTrad("editor.cancelChanges"),
-                  defaultMessage: "Cancel changes",
+                  id: getTrad("editor.back"),
+                  defaultMessage: "Back",
                 })}
-              </Button>
-              <Button
-                startIcon={<Check />}
-                onClick={handleSaveAll}
-                disabled={modifiedDocumentIds.size === 0}
-                loading={save.isLoading}
-              >
-                {formatMessage(
-                  {
-                    id: getTrad("editor.save"),
-                    defaultMessage: "Save ({count})",
-                  },
-                  { count: modifiedDocumentIds.size },
+              </Link>
+            }
+            primaryAction={
+              <Flex gap={2}>
+                <Button
+                  variant="tertiary"
+                  onClick={handleCancel}
+                  disabled={modifiedDocumentIds.size === 0}
+                >
+                  {formatMessage({
+                    id: getTrad("editor.cancelChanges"),
+                    defaultMessage: "Cancel changes",
+                  })}
+                </Button>
+                <Button
+                  startIcon={<Check />}
+                  onClick={handleSaveAll}
+                  disabled={modifiedDocumentIds.size === 0}
+                  loading={save.isLoading}
+                >
+                  {formatMessage(
+                    {
+                      id: getTrad("editor.save"),
+                      defaultMessage: "Save ({count})",
+                    },
+                    { count: modifiedDocumentIds.size },
+                  )}
+                </Button>
+              </Flex>
+            }
+          />
+
+          <Layouts.Content>
+            <Box paddingBottom={4}>
+              <Flex gap={4} justifyContent="space-between" alignItems="center">
+                {locales && (
+                  <LanguageSelector
+                    locales={locales}
+                    value={targetLocale}
+                    onChange={setTargetLocale}
+                  />
                 )}
-              </Button>
-            </Flex>
-          }
-        />
+                <QuotaDisplay remainingBalance={remainingBalance} />
+              </Flex>
+            </Box>
 
-        <Layouts.Content>
-          <Box paddingBottom={4}>
-            <Flex gap={4} justifyContent="space-between" alignItems="center">
-              {locales && (
-                <LanguageSelector
-                  locales={locales}
-                  value={targetLocale}
-                  onChange={setTargetLocale}
-                />
-              )}
-              <QuotaDisplay remainingBalance={remainingBalance} />
-            </Flex>
-          </Box>
+            <Divider />
 
-          <Divider />
-
-          <Box paddingTop={4}>
-            <Flex gap={4} alignItems="flex-start" style={{ width: "100%" }}>
-              {/* Left sidebar: entry list */}
-              <Box style={{ width: "320px", flexShrink: 0 }}>
-                <Box style={{ flex: 1 }} marginBottom={2}>
-                  <TextInput
-                    placeholder={formatMessage({
-                      id: getTrad("editor.search"),
-                      defaultMessage: "Search entries...",
-                    })}
-                    value={search}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setSearch(e.target.value)
-                    }
-                    size="S"
-                    aria-label="Search"
+            <Box paddingTop={4}>
+              <Flex
+                gap={4}
+                alignItems="flex-start"
+                direction={isMobile ? "column" : "row"}
+                style={{ width: "100%" }}
+              >
+                {/* Left sidebar: entry list */}
+                <Box
+                  style={
+                    isMobile
+                      ? { width: "100%" }
+                      : { width: "320px", flexShrink: 0 }
+                  }
+                >
+                  <Box style={{ flex: 1 }} marginBottom={4}>
+                    <TextInput
+                      placeholder={formatMessage({
+                        id: getTrad("editor.search"),
+                        defaultMessage: "Search entries...",
+                      })}
+                      value={search}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setSearch(e.target.value)
+                      }
+                      size="S"
+                      aria-label="Search"
+                    />
+                  </Box>
+                  <EntryList
+                    entries={entries}
+                    selectedDocumentId={selectedDocumentId}
+                    onSelect={setSelectedDocumentId}
+                    modifiedDocumentIds={modifiedDocumentIds}
+                    primaryFieldName={primaryFieldName}
                   />
                 </Box>
-                <EntryList
-                  entries={entries}
-                  selectedDocumentId={selectedDocumentId}
-                  onSelect={setSelectedDocumentId}
-                  modifiedDocumentIds={modifiedDocumentIds}
-                  primaryFieldName={primaryFieldName}
-                />
-              </Box>
 
-              {/* Right panel: field editor */}
-              <Box style={{ flex: 1 }}>
-                {selectedEntry ? (
-                  <FieldEditor
-                    localizableFields={localizableFields}
-                    fieldValues={selectedEntry.fields}
-                    draftValues={draftValuesForSelected}
-                    onFieldChange={handleFieldChange}
-                    onTranslateField={handleTranslateField}
-                    onRevertField={handleRevertField}
-                    translatingField={translatingField}
-                    lastCharsUsed={lastCharsUsed}
-                  />
-                ) : (
-                  <Box padding={6} background="neutral100" hasRadius>
-                    <Typography variant="omega" textColor="neutral500">
-                      {formatMessage({
-                        id: getTrad("editor.selectEntry"),
-                        defaultMessage:
-                          "Select an entry from the list to edit translations",
-                      })}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            </Flex>
-          </Box>
-        </Layouts.Content>
-      </Page.Main>
-    </Layouts.Root>
+                {/* Right panel: field editor */}
+                <Box style={{ width: "100%" }}>
+                  {selectedEntry ? (
+                    <FieldEditor
+                      localizableFields={localizableFields}
+                      fieldValues={selectedEntry.fields}
+                      draftValues={draftValuesForSelected}
+                      onFieldChange={handleFieldChange}
+                      onTranslateField={handleTranslateField}
+                      onTranslateEntry={handleTranslateEntry}
+                      onRevertField={handleRevertField}
+                      translatingField={translatingField}
+                      isTranslatingEntry={isTranslatingEntry}
+                      lastCharsUsed={lastCharsUsed}
+                    />
+                  ) : (
+                    <Box padding={6} background="neutral100" hasRadius>
+                      <Typography variant="omega" textColor="neutral500">
+                        {formatMessage({
+                          id: getTrad("editor.selectEntry"),
+                          defaultMessage:
+                            "Select an entry from the list to edit translations",
+                        })}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Flex>
+            </Box>
+          </Layouts.Content>
+        </Page.Main>
+      </Layouts.Root>
 
-    {blocker.state === "blocked" && (
-      <Dialog.Root
-        open
-        onOpenChange={() => blocker.reset?.()}
-      >
-        <Dialog.Content>
-          <Dialog.Header>
-            {formatMessage({
-              id: "app.components.ConfirmDialog.title",
-              defaultMessage: "Confirmation",
-            })}
-          </Dialog.Header>
-          <Dialog.Body
-            icon={<WarningCircle width="24px" height="24px" fill="danger600" />}
-            textAlign="center"
-          >
-            {formatMessage({
-              id: "global.prompt.unsaved",
-              defaultMessage:
-                "Are you sure you want to leave this page? All your modifications will be lost.",
-            })}
-          </Dialog.Body>
-          <Dialog.Footer>
-            <Dialog.Cancel>
-              <Button variant="tertiary" fullWidth>
+      {blocker.state === "blocked" && (
+        <Dialog.Root open onOpenChange={() => blocker.reset?.()}>
+          <Dialog.Content>
+            <Dialog.Header>
+              {formatMessage({
+                id: "app.components.ConfirmDialog.title",
+                defaultMessage: "Confirmation",
+              })}
+            </Dialog.Header>
+            <Dialog.Body
+              icon={
+                <WarningCircle width="24px" height="24px" fill="danger600" />
+              }
+              textAlign="center"
+            >
+              {formatMessage({
+                id: "global.prompt.unsaved",
+                defaultMessage:
+                  "Are you sure you want to leave this page? All your modifications will be lost.",
+              })}
+            </Dialog.Body>
+            <Dialog.Footer>
+              <Dialog.Cancel>
+                <Button variant="tertiary" fullWidth>
+                  {formatMessage({
+                    id: "app.components.Button.cancel",
+                    defaultMessage: "Cancel",
+                  })}
+                </Button>
+              </Dialog.Cancel>
+              <Button
+                variant="danger"
+                fullWidth
+                onClick={() => blocker.proceed?.()}
+              >
                 {formatMessage({
-                  id: "app.components.Button.cancel",
-                  defaultMessage: "Cancel",
+                  id: "app.components.Button.confirm",
+                  defaultMessage: "Confirm",
                 })}
               </Button>
-            </Dialog.Cancel>
-            <Button variant="danger" fullWidth onClick={() => blocker.proceed?.()}>
-              {formatMessage({
-                id: "app.components.Button.confirm",
-                defaultMessage: "Confirm",
-              })}
-            </Button>
-          </Dialog.Footer>
-        </Dialog.Content>
-      </Dialog.Root>
-    )}
+            </Dialog.Footer>
+          </Dialog.Content>
+        </Dialog.Root>
+      )}
     </>
   );
 };

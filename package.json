@@ -55,6 +55,7 @@
   ],
   "scripts": {
     "build": "strapi-plugin build",
+    "build:sourcemap": "strapi-plugin build --sourcemap",
     "watch": "strapi-plugin watch",
     "verify": "strapi-plugin verify"
   },

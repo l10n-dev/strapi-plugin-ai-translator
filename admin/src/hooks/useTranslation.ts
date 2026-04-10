@@ -1,16 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { useFetchClient } from '@strapi/strapi/admin';
+import { useMutation, useQuery, useQueryClient } from "react-query";
+import { useFetchClient } from "@strapi/strapi/admin";
 import {
   translateEntry,
   translateBulk,
   saveTranslation,
   fetchBulkStatus,
   cancelBulk,
-} from '../utils/api';
-import { useState, useEffect, useCallback, useRef } from 'react';
+} from "../utils/api";
 
 interface TranslateResult {
-  status: 'success' | 'error';
+  status: "success" | "error";
   reason?: string;
   message?: string;
   translations?: Record<string, string>;
@@ -22,8 +21,8 @@ interface BulkProgress {
   total: number;
   completed: number;
   failed: number;
-  status: 'idle' | 'running' | 'completed' | 'stopped';
-  stopReason?: 'insufficientBalance' | 'unauthorized';
+  status: "idle" | "running" | "completed" | "stopped";
+  stopReason?: "insufficientBalance" | "unauthorized";
   errors: Array<{ documentId: string; error: string }>;
   remainingBalance?: number;
 }
@@ -35,7 +34,12 @@ export const useTranslation = () => {
   const translateMutation = useMutation<
     TranslateResult,
     Error,
-    { uid: string; documentId: string; targetLocale: string; incremental?: boolean; fields?: string[] }
+    {
+      uid: string;
+      documentId: string;
+      targetLocale: string;
+      fields?: string[];
+    }
   >(
     async (params) => {
       const data = await translateEntry(client, params);
@@ -43,28 +47,36 @@ export const useTranslation = () => {
     },
     {
       onSuccess: () => {
-        queryClient.invalidateQueries(['ai-translator', 'content-types']);
+        queryClient.invalidateQueries(["ai-translator", "content-types"]);
       },
-    }
+    },
   );
 
   const bulkMutation = useMutation<
     any,
     Error,
     { uids: string[]; targetLocale: string; incremental?: boolean }
-  >(async (params) => {
-    const data = await translateBulk(client, params);
-    return data;
-  }, {
-    onMutate: () => {
-      queryClient.removeQueries(['ai-translator', 'bulk-status']);
+  >(
+    async (params) => {
+      const data = await translateBulk(client, params);
+      return data;
     },
-  });
+    {
+      onMutate: () => {
+        queryClient.removeQueries(["ai-translator", "bulk-status"]);
+      },
+    },
+  );
 
   const saveMutation = useMutation<
     any,
     Error,
-    { uid: string; documentId: string; targetLocale: string; fields: Record<string, string> }
+    {
+      uid: string;
+      documentId: string;
+      targetLocale: string;
+      fields: Record<string, string>;
+    }
   >(
     async (params) => {
       const data = await saveTranslation(client, params);
@@ -72,9 +84,9 @@ export const useTranslation = () => {
     },
     {
       onSuccess: () => {
-        queryClient.invalidateQueries(['ai-translator']);
+        queryClient.invalidateQueries(["ai-translator"]);
       },
-    }
+    },
   );
 
   const cancelMutation = useMutation(async () => {
@@ -93,7 +105,7 @@ export const useBulkProgress = (polling: boolean) => {
   const client = useFetchClient();
 
   return useQuery<BulkProgress>(
-    ['ai-translator', 'bulk-status'],
+    ["ai-translator", "bulk-status"],
     async () => {
       const data = await fetchBulkStatus(client);
       return data;
@@ -101,6 +113,6 @@ export const useBulkProgress = (polling: boolean) => {
     {
       refetchInterval: polling ? 2000 : false,
       enabled: polling,
-    }
+    },
   );
 };

@@ -12,6 +12,7 @@ import {
 import { Play, ArrowClockwise } from "@strapi/icons";
 import { useIntl } from "react-intl";
 import { getTrad } from "../utils/getTrad";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 interface LocalizableField {
   name: string;
@@ -30,8 +31,10 @@ interface FieldEditorProps {
   draftValues: Record<string, string>;
   onFieldChange: (fieldName: string, value: string) => void;
   onTranslateField: (fieldName: string) => void;
+  onTranslateEntry?: () => void;
   onRevertField: (fieldName: string) => void;
   translatingField?: string;
+  isTranslatingEntry?: boolean;
   lastCharsUsed?: number;
 }
 
@@ -41,19 +44,27 @@ export const FieldEditor = ({
   draftValues,
   onFieldChange,
   onTranslateField,
+  onTranslateEntry,
   onRevertField,
   translatingField,
+  isTranslatingEntry,
   lastCharsUsed,
 }: FieldEditorProps) => {
   const { formatMessage } = useIntl();
   const [hideSource, setHideSource] = useState(false);
+  const isMobile = useIsMobile();
 
   const isLongText = (type: string) =>
     type === "text" || type === "richtext" || type === "blocks";
 
   return (
-    <Box style={{ height: "100%" }}>
-      <Flex justifyContent="flex-end" paddingTop={2} paddingBottom={3}>
+    <Box style={{ width: "100%" }}>
+      <Flex
+        justifyContent="space-between"
+        alignItems="center"
+        marginBottom={4}
+        width="100%"
+      >
         <Checkbox
           checked={hideSource}
           onCheckedChange={() => setHideSource(!hideSource)}
@@ -63,13 +74,24 @@ export const FieldEditor = ({
             defaultMessage: "Hide source",
           })}
         </Checkbox>
+        {onTranslateEntry && (
+          <Button
+            variant="secondary"
+            size="S"
+            startIcon={<Play />}
+            onClick={onTranslateEntry}
+            loading={isTranslatingEntry}
+            disabled={isTranslatingEntry || !!translatingField}
+          >
+            {formatMessage({
+              id: getTrad("editor.translateEntry"),
+              defaultMessage: "Translate entry",
+            })}
+          </Button>
+        )}
       </Flex>
 
-      <Flex
-        direction="column"
-        gap={4}
-        style={{ height: "calc(100% - 40px)", overflowY: "auto" }}
-      >
+      <Flex direction="column" gap={4}>
         {localizableFields.map((field) => {
           const source = fieldValues[field.name]?.source ?? "";
           const savedTarget = fieldValues[field.name]?.target ?? "";
@@ -147,7 +169,11 @@ export const FieldEditor = ({
                 </Flex>
               </Flex>
 
-              <Flex gap={4} alignItems="stretch">
+              <Flex
+                gap={4}
+                alignItems="stretch"
+                direction={isMobile ? "column" : "row"}
+              >
                 {!hideSource && (
                   <Box
                     style={{

@@ -229,7 +229,9 @@ export default ({ strapi }: { strapi: any }) => ({
       locale: defaultLocale,
       fields: fieldsToSelect,
     });
-    if (!source) throw new Error(`Entry ${documentId} not found`);
+    if (!source) {
+      throw new Error(`Entry ${documentId} not found`);
+    }
 
     let target = null;
     try {

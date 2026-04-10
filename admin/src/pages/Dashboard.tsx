@@ -71,13 +71,13 @@ export const Dashboard = () => {
     }
   }, [settings]);
 
-  // Initialize target locale from locales list if not set
+  // Initialize target locale from locales list only when there is no saved locale
   useEffect(() => {
-    if (!targetLocale && data?.locales) {
+    if (!targetLocale && data?.locales && !settings?.lastTargetLocale) {
       const nonDefault = data.locales.find((l) => !l.isDefault);
       if (nonDefault) setTargetLocale(nonDefault.code);
     }
-  }, [data?.locales, targetLocale]);
+  }, [data?.locales, targetLocale, settings?.lastTargetLocale]);
 
   // Track bulk progress
   useEffect(() => {
@@ -426,7 +426,8 @@ export const Dashboard = () => {
                 >
                   {formatMessage({
                     id: getTrad("dashboard.incremental"),
-                    defaultMessage: "Incremental (new strings only)",
+                    defaultMessage:
+                      "Incremental (new entries or updated entries only)",
                   })}
                 </Checkbox>
               </Flex>
@@ -476,14 +477,14 @@ export const Dashboard = () => {
                     {formatMessage({
                       id: getTrad("dashboard.infoMessage"),
                       defaultMessage:
-                        "Whenever you add new content, run auto-translation with Incremental mode enabled, only new untranslated strings are processed. This allows you to keep manual translations while still benefiting from AI translation for new content.",
+                        "Incremental mode skips entries that are already up-to-date. For entries where the source was updated after the translation, all fields are retranslated (Strapi does not track which specific field changed). To translate or edit a single field, open the entry in the Editor.",
                     })}
                   </Typography>
                   <Typography variant="pi">
                     {formatMessage({
                       id: getTrad("dashboard.infoMessageAI"),
                       defaultMessage:
-                        "Our AI translator understands, supports 165 languages, preserves formatting and structure, and follows grammar and plural form rules. It produces natural, human-like translations.",
+                        "Our AI translator understands context, supports 165 languages, preserves formatting and structure, and follows grammar and plural form rules. It produces natural, human-like translations.",
                     })}
                   </Typography>
                 </Flex>

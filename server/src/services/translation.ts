@@ -71,7 +71,7 @@ export default ({ strapi }: { strapi: any }) => {
       uid: string,
       documentId: string,
       targetLocale: string,
-      options?: { incremental?: boolean; fields?: string[] },
+      options?: { fields?: string[] },
     ): Promise<TranslateEntryResult> {
       const settingsService = strapi
         .plugin("ai-translator")
@@ -96,18 +96,15 @@ export default ({ strapi }: { strapi: any }) => {
       );
 
       const sourceObj: Record<string, string> = {};
-      const targetObj: Record<string, string> = {};
       const fieldsToTranslate = options?.fields || Object.keys(entry.fields);
 
       for (const fieldName of fieldsToTranslate) {
         const fieldData = entry.fields[fieldName];
-        if (!fieldData) continue;
-        const srcVal = fieldData.source;
-        if (srcVal !== null && srcVal !== undefined && srcVal !== "") {
-          sourceObj[fieldName] = String(srcVal);
+        if (!fieldData) {
+          continue;
         }
-        if (options?.incremental && fieldData.target) {
-          targetObj[fieldName] = String(fieldData.target);
+        if (fieldData.source) {
+          sourceObj[fieldName] = String(fieldData.source);
         }
       }
 
@@ -125,42 +122,30 @@ export default ({ strapi }: { strapi: any }) => {
             targetLanguageCode: targetLocale,
             returnTranslationsAsString: true,
             client: "strapi-ai-translator",
-            translateOnlyNewStrings: options?.incremental || false,
-            targetStrings:
-              Object.keys(targetObj).length > 0
-                ? JSON.stringify(targetObj)
-                : undefined,
+            translateOnlyNewStrings: false,
             schema: null,
+            format: "json",
           },
           apiKey,
         );
 
-        if (!result) {
-          const lastError = getLastError();
-          if (lastError.lastErrorUrl === URLS.PRICING) {
-            return {
-              status: "error",
-              reason: "insufficientBalance",
-              message:
-                lastError.lastErrorMessage ||
-                `Not enough characters remaining. Purchase more at ${URLS.PRICING}`,
-            };
-          }
-          return {
-            status: "error",
-            reason: "unauthorized",
-            message:
-              lastError.lastErrorMessage ||
-              "Unauthorized. Please check your API Key.",
-          };
-        }
-
-        if (result.finishReason === FinishReason.insufficientBalance) {
+        if (
+          (!result && getLastError().lastErrorUrl === URLS.PRICING) ||
+          result?.finishReason === FinishReason.insufficientBalance
+        ) {
           return {
             status: "error",
             reason: "insufficientBalance",
             message: `Not enough characters remaining. Purchase more at ${URLS.PRICING}`,
-            remainingBalance: result.remainingBalance,
+            remainingBalance: result?.remainingBalance,
+          };
+        }
+
+        if (!result) {
+          return {
+            status: "error",
+            reason: "unauthorized",
+            message: "Unauthorized. Please check your API Key.",
           };
         }
 
@@ -238,15 +223,51 @@ export default ({ strapi }: { strapi: any }) => {
       const defaultLocale = await contentTypeService.getDefaultLocale();
 
       // Gather all entries to translate
-      const allTasks: Array<{ uid: string; documentId: string }> = [];
+      // For entries where the source was updated after the target, we must
+      // retranslate all fields — Strapi exposes no per-field updatedAt, so we
+      // cannot tell which specific field changed.
+      const allTasks: Array<{
+        uid: string;
+        documentId: string;
+      }> = [];
       for (const uid of uids) {
         const entries = await strapi.documents(uid).findMany({
           locale: defaultLocale,
-          fields: ["documentId"],
+          fields: ["documentId", "updatedAt"],
           limit: 10000,
         });
-        for (const entry of entries) {
-          allTasks.push({ uid, documentId: entry.documentId });
+
+        if (options?.incremental) {
+          const targetEntries = await strapi.documents(uid).findMany({
+            locale: targetLocale,
+            fields: ["documentId", "updatedAt"],
+            limit: 10000,
+          });
+          const targetByDocId = new Map(
+            targetEntries.map((e: any) => [e.documentId, e.updatedAt]),
+          );
+          for (const entry of entries) {
+            const targetUpdatedAt = targetByDocId.get(entry.documentId) as
+              | string
+              | undefined;
+            if (
+              targetUpdatedAt &&
+              new Date(targetUpdatedAt) >= new Date(entry.updatedAt)
+            ) {
+              continue; // Already translated and up-to-date
+            }
+            allTasks.push({
+              uid,
+              documentId: entry.documentId,
+            });
+          }
+        } else {
+          for (const entry of entries) {
+            allTasks.push({
+              uid,
+              documentId: entry.documentId,
+            });
+          }
         }
       }
 
@@ -257,8 +278,8 @@ export default ({ strapi }: { strapi: any }) => {
         return bulkProgress;
       }
 
-      // Throttled parallel: 100ms stagger between request launches
-      const STAGGER_MS = 100;
+      // Throttled parallel: 10ms stagger between request launches
+      const STAGGER_MS = 10;
       const promises: Promise<void>[] = [];
 
       for (let i = 0; i < allTasks.length; i++) {
@@ -272,7 +293,6 @@ export default ({ strapi }: { strapi: any }) => {
             task.uid,
             task.documentId,
             targetLocale,
-            { incremental: options?.incremental },
           );
 
           if (result.status === "success" && result.translations) {
@@ -306,7 +326,7 @@ export default ({ strapi }: { strapi: any }) => {
 
         promises.push(promise);
 
-        // Stagger: wait 100ms before launching the next request
+        // Stagger: wait 10ms before launching the next request
         if (i < allTasks.length - 1 && !abortBulk) {
           await new Promise((resolve) => setTimeout(resolve, STAGGER_MS));
         }

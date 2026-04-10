@@ -10,13 +10,11 @@ import {
   Box,
   Flex,
   IconButton,
-  Button,
 } from "@strapi/design-system";
 import { Pencil, Play } from "@strapi/icons";
 import { useIntl } from "react-intl";
 import { useNavigate } from "react-router-dom";
 import { getTrad } from "../utils/getTrad";
-import PLUGIN_ID from "../pluginId";
 
 interface ContentType {
   uid: string;
@@ -76,15 +74,50 @@ export const ContentTypeTable = ({
   const statusBadge = (status: string) => {
     switch (status) {
       case "translating":
-        return pill("primary100", "primary700", "Translating...");
+        return pill(
+          "primary100",
+          "primary700",
+          formatMessage({
+            id: getTrad("table.status.translating"),
+            defaultMessage: "Translating...",
+          }),
+        );
       case "upToDate":
-        return pill("success100", "success700", "Up to date");
+        return pill(
+          "success100",
+          "success700",
+          formatMessage({
+            id: getTrad("table.status.upToDate"),
+            defaultMessage: "Up to date",
+          }),
+        );
       case "partial":
-        return pill("warning100", "warning700", "Partial");
+        return pill(
+          "warning100",
+          "warning700",
+          formatMessage({
+            id: getTrad("table.status.partial"),
+            defaultMessage: "Partial",
+          }),
+        );
       case "empty":
-        return pill("neutral150", "neutral600", "Empty");
+        return pill(
+          "neutral150",
+          "neutral600",
+          formatMessage({
+            id: getTrad("table.status.empty"),
+            defaultMessage: "Empty",
+          }),
+        );
       default:
-        return pill("danger100", "danger700", "Not translated");
+        return pill(
+          "danger100",
+          "danger700",
+          formatMessage({
+            id: getTrad("table.status.notTranslated"),
+            defaultMessage: "Not translated",
+          }),
+        );
     }
   };
 
@@ -168,7 +201,7 @@ export const ContentTypeTable = ({
                   {ct.translatedEntries}/{ct.totalEntries}
                 </Typography>
               </Td>
-              <Td>{statusBadge(status)}</Td>
+              <Td minWidth="120px">{statusBadge(status)}</Td>
               <Td>
                 <Flex gap={1}>
                   <IconButton
