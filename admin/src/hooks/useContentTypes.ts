@@ -1,6 +1,6 @@
-import { useQuery } from 'react-query';
-import { useFetchClient } from '@strapi/strapi/admin';
-import { fetchContentTypes } from '../utils/api';
+import { useQuery } from "react-query";
+import { useFetchClient } from "@strapi/strapi/admin";
+import { fetchContentTypes } from "../utils/api";
 
 interface ContentType {
   uid: string;
@@ -28,7 +28,7 @@ export const useContentTypes = (targetLocale?: string) => {
   const client = useFetchClient();
 
   return useQuery<ContentTypesResponse>(
-    ['ai-translator', 'content-types', targetLocale],
+    ["ai-translator", "content-types", targetLocale],
     async () => {
       const data = await fetchContentTypes(client, targetLocale);
       return data;
@@ -36,6 +36,6 @@ export const useContentTypes = (targetLocale?: string) => {
     {
       enabled: true,
       refetchOnWindowFocus: false,
-    }
+    },
   );
 };

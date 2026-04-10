@@ -159,6 +159,9 @@ export default ({ strapi }: { strapi: any }) => ({
     const localizableFieldNames = ctInfo.localizableFields.map((f) => f.name);
     const fieldsToSelect = ["documentId", ...localizableFieldNames];
 
+    const page = params?.page || 1;
+    const pageSize = params?.pageSize || 50;
+
     const filters: any = {};
     if (params?.search) {
       const firstStringField = ctInfo.localizableFields.find(
@@ -173,8 +176,8 @@ export default ({ strapi }: { strapi: any }) => ({
       locale: defaultLocale,
       fields: fieldsToSelect,
       filters,
-      page: params?.page || 1,
-      pageSize: params?.pageSize || 50,
+      start: (page - 1) * pageSize,
+      limit: pageSize,
     });
 
     const entries = [];
@@ -209,6 +212,11 @@ export default ({ strapi }: { strapi: any }) => ({
 
     return {
       entries,
+      pagination: {
+        page,
+        pageSize,
+        hasNextPage: sourceEntries.length === pageSize,
+      },
       localizableFields: ctInfo.localizableFields,
       contentType: ctInfo,
     };

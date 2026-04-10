@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import { Box, Typography, Flex, Badge } from "@strapi/design-system";
 import { styled } from "styled-components";
 
@@ -13,6 +14,9 @@ interface EntryListProps {
   onSelect: (documentId: string) => void;
   modifiedDocumentIds: Set<string>;
   primaryFieldName?: string;
+  onLoadMore?: () => void;
+  hasNextPage?: boolean;
+  isLoadingMore?: boolean;
 }
 
 const EntryItem = styled(Box)<{ $active?: boolean }>`
@@ -32,7 +36,26 @@ export const EntryList = ({
   onSelect,
   modifiedDocumentIds,
   primaryFieldName,
+  onLoadMore,
+  hasNextPage,
+  isLoadingMore,
 }: EntryListProps) => {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!onLoadMore || !hasNextPage) return;
+    const observer = new IntersectionObserver(
+      (observed) => {
+        if (observed[0].isIntersecting) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    const el = sentinelRef.current;
+    if (el) observer.observe(el);
+    return () => observer.disconnect();
+  }, [onLoadMore, hasNextPage]);
   const getDisplayText = (entry: Entry) => {
     if (primaryFieldName && entry.fields[primaryFieldName]) {
       const val = entry.fields[primaryFieldName].source;
@@ -104,6 +127,15 @@ export const EntryList = ({
             No entries found
           </Typography>
         </Box>
+      )}
+      {hasNextPage && (
+        <div ref={sentinelRef} style={{ padding: "8px", textAlign: "center" }}>
+          {isLoadingMore && (
+            <Typography variant="pi" textColor="neutral500">
+              Loading more…
+            </Typography>
+          )}
+        </div>
       )}
     </Box>
   );

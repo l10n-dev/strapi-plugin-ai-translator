@@ -1,6 +1,6 @@
-import { useQuery } from 'react-query';
-import { useFetchClient } from '@strapi/strapi/admin';
-import { fetchContentTypes } from '../utils/api';
+import { useQuery } from "react-query";
+import { useFetchClient } from "@strapi/strapi/admin";
+import { fetchContentTypes } from "../utils/api";
 
 interface Locale {
   code: string;
@@ -12,7 +12,7 @@ export const useLocales = () => {
   const client = useFetchClient();
 
   return useQuery<Locale[]>(
-    ['ai-translator', 'locales'],
+    ["ai-translator", "locales"],
     async () => {
       const data = await fetchContentTypes(client);
       return data.locales || [];
@@ -20,6 +20,6 @@ export const useLocales = () => {
     {
       refetchOnWindowFocus: false,
       staleTime: 60000,
-    }
+    },
   );
 };

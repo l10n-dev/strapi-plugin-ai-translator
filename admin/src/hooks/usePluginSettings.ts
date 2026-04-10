@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { useFetchClient } from '@strapi/strapi/admin';
-import { fetchSettings, updateSettings } from '../utils/api';
+import { useQuery, useMutation, useQueryClient } from "react-query";
+import { useFetchClient } from "@strapi/strapi/admin";
+import { fetchSettings, updateSettings } from "../utils/api";
 
 interface PluginSettings {
   apiKey: string;
@@ -15,14 +15,14 @@ export const usePluginSettings = () => {
   const queryClient = useQueryClient();
 
   const query = useQuery<PluginSettings>(
-    ['ai-translator', 'settings'],
+    ["ai-translator", "settings"],
     async () => {
       const data = await fetchSettings(client);
       return data;
     },
     {
       refetchOnWindowFocus: false,
-    }
+    },
   );
 
   const mutation = useMutation<PluginSettings, Error, Partial<PluginSettings>>(
@@ -32,9 +32,9 @@ export const usePluginSettings = () => {
     },
     {
       onSuccess: () => {
-        queryClient.invalidateQueries(['ai-translator', 'settings']);
+        queryClient.invalidateQueries(["ai-translator", "settings"]);
       },
-    }
+    },
   );
 
   return {

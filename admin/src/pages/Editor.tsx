@@ -13,7 +13,7 @@ import { Page, Layouts, useNotification } from "@strapi/strapi/admin";
 import { Check, ArrowLeft, WarningCircle } from "@strapi/icons";
 import { useIntl } from "react-intl";
 import { useParams, useNavigate, useBlocker } from "react-router-dom";
-import { useQuery, useQueryClient } from "react-query";
+import { useQueryClient, useInfiniteQuery } from "react-query";
 import { useFetchClient } from "@strapi/strapi/admin";
 import { URLS } from "ai-l10n-core";
 import { getTrad } from "../utils/getTrad";
@@ -137,29 +137,41 @@ export const Editor = () => {
     }
   }, [settings?.lastTargetLocale, locales]);
 
+  const PAGE_SIZE = 50;
+
   // Fetch entries
   const {
-    data: entriesData,
+    data: entriesPages,
     isLoading,
     refetch: refetchEntries,
-  } = useQuery(
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery(
     ["ai-translator", "entries", uid, targetLocale, debouncedSearch],
-    async () => {
+    async ({ pageParam = 1 }) => {
       if (!uid || !targetLocale) return null;
       return fetchEntries(client, uid, targetLocale, {
         search: debouncedSearch || undefined,
+        page: pageParam,
+        pageSize: PAGE_SIZE,
       });
     },
     {
       enabled: !!uid && !!targetLocale,
       refetchOnWindowFocus: false,
       keepPreviousData: true,
+      getNextPageParam: (lastPage: any) =>
+        lastPage?.pagination?.hasNextPage
+          ? lastPage.pagination.page + 1
+          : undefined,
     },
   );
 
-  const entries: Entry[] = entriesData?.entries || [];
-  const localizableFields = entriesData?.localizableFields || [];
-  const contentType = entriesData?.contentType;
+  const entries: Entry[] =
+    entriesPages?.pages?.flatMap((p: any) => p?.entries || []) || [];
+  const localizableFields = entriesPages?.pages?.[0]?.localizableFields || [];
+  const contentType = entriesPages?.pages?.[0]?.contentType;
 
   // Select first entry if none selected
   useEffect(() => {
@@ -495,6 +507,9 @@ export const Editor = () => {
                     onSelect={setSelectedDocumentId}
                     modifiedDocumentIds={modifiedDocumentIds}
                     primaryFieldName={primaryFieldName}
+                    onLoadMore={fetchNextPage}
+                    hasNextPage={!!hasNextPage}
+                    isLoadingMore={isFetchingNextPage}
                   />
                 </Box>
 
