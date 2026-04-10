@@ -7,11 +7,12 @@ import {
   TextInput,
   Divider,
   Link,
+  Dialog,
 } from "@strapi/design-system";
 import { Page, Layouts, useNotification } from "@strapi/strapi/admin";
-import { Check, ArrowLeft } from "@strapi/icons";
+import { Check, ArrowLeft, WarningCircle } from "@strapi/icons";
 import { useIntl } from "react-intl";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useBlocker } from "react-router-dom";
 import { useQuery, useQueryClient } from "react-query";
 import { useFetchClient } from "@strapi/strapi/admin";
 import { URLS } from "ai-l10n-core";
@@ -297,6 +298,25 @@ export const Editor = () => {
     dispatch({ type: "REVERT_ALL" });
   }, []);
 
+  const hasUnsavedChanges = Object.keys(draftState.changes).length > 0;
+
+  // Block in-app navigation when there are unsaved changes
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasUnsavedChanges &&
+      currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  // Warn on browser tab/window close
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   if (isLoading) return <Page.Loading />;
 
   const draftValuesForSelected = selectedDocumentId
@@ -304,6 +324,7 @@ export const Editor = () => {
     : {};
 
   return (
+    <>
     <Layouts.Root>
       <Page.Title>
         {formatMessage(
@@ -440,5 +461,48 @@ export const Editor = () => {
         </Layouts.Content>
       </Page.Main>
     </Layouts.Root>
+
+    {blocker.state === "blocked" && (
+      <Dialog.Root
+        open
+        onOpenChange={() => blocker.reset?.()}
+      >
+        <Dialog.Content>
+          <Dialog.Header>
+            {formatMessage({
+              id: "app.components.ConfirmDialog.title",
+              defaultMessage: "Confirmation",
+            })}
+          </Dialog.Header>
+          <Dialog.Body
+            icon={<WarningCircle width="24px" height="24px" fill="danger600" />}
+            textAlign="center"
+          >
+            {formatMessage({
+              id: "global.prompt.unsaved",
+              defaultMessage:
+                "Are you sure you want to leave this page? All your modifications will be lost.",
+            })}
+          </Dialog.Body>
+          <Dialog.Footer>
+            <Dialog.Cancel>
+              <Button variant="tertiary" fullWidth>
+                {formatMessage({
+                  id: "app.components.Button.cancel",
+                  defaultMessage: "Cancel",
+                })}
+              </Button>
+            </Dialog.Cancel>
+            <Button variant="danger" fullWidth onClick={() => blocker.proceed?.()}>
+              {formatMessage({
+                id: "app.components.Button.confirm",
+                defaultMessage: "Confirm",
+              })}
+            </Button>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog.Root>
+    )}
+    </>
   );
 };
