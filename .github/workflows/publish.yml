@@ -1,0 +1,147 @@
+name: Publish to NPM
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (build/verify without publishing or tagging)"
+        type: boolean
+        default: false
+  push:
+    branches:
+      - main
+    paths:
+      - package.json
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────
+  # Job 1: Publish strapi-plugin-ai-translator
+  # ─────────────────────────────────────────────────────────────────
+  publish:
+    name: Publish strapi-plugin-ai-translator
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      published: ${{ steps.publish.outputs.published }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.14.0"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install npm 11.5.1+
+        run: npm install -g npm@^11.5.1
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "📦 strapi-plugin-ai-translator version: $VERSION"
+
+      - name: Check if already published
+        id: check
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          if npm view "strapi-plugin-ai-translator@$VERSION" version &>/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "ℹ️  strapi-plugin-ai-translator@$VERSION is already published — skipping"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "✅ strapi-plugin-ai-translator@$VERSION is not yet published — will publish"
+          fi
+
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm rebuild esbuild
+
+      - name: Build
+        run: npm run build
+
+      - name: Dry pack
+        run: npm pack --dry-run
+
+      - name: Publish
+        id: publish
+        if: steps.check.outputs.skip != 'true' && inputs.dry_run != true
+        run: |
+          npm publish --provenance --access public
+          echo "published=true" >> "$GITHUB_OUTPUT"
+          echo "✅ strapi-plugin-ai-translator@${{ steps.version.outputs.version }} published"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ─────────────────────────────────────────────────────────────────
+  # Job 2: Tag & GitHub Release
+  # ─────────────────────────────────────────────────────────────────
+  tag-release:
+    name: Tag & GitHub Release
+    runs-on: ubuntu-latest
+    needs: publish
+    if: ${{ inputs.dry_run != true && needs.publish.outputs.published == 'true' }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+          echo "version_tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "major_tag=v$MAJOR" >> "$GITHUB_OUTPUT"
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create version tag
+        run: |
+          VERSION_TAG=${{ steps.version.outputs.version_tag }}
+          if git rev-parse "$VERSION_TAG" &>/dev/null; then
+            echo "ℹ️  Tag $VERSION_TAG already exists — skipping"
+          else
+            git tag -a "$VERSION_TAG" -m "Release ${{ steps.version.outputs.version }}"
+            git push origin "$VERSION_TAG"
+            echo "✅ Created and pushed tag $VERSION_TAG"
+          fi
+
+      - name: Update major version tag
+        run: |
+          MAJOR_TAG=${{ steps.version.outputs.major_tag }}
+          git tag -f -a "$MAJOR_TAG" -m "Latest $MAJOR_TAG.x release (${{ steps.version.outputs.version }})"
+          git push origin "$MAJOR_TAG" --force
+          echo "✅ Updated major tag $MAJOR_TAG → ${{ steps.version.outputs.version }}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION_TAG=${{ steps.version.outputs.version_tag }}
+          if gh release view "$VERSION_TAG" &>/dev/null; then
+            echo "ℹ️  Release $VERSION_TAG already exists — skipping"
+          else
+            gh release create "$VERSION_TAG" \
+              --title "v${{ steps.version.outputs.version }}" \
+              --generate-notes
+            echo "✅ GitHub Release $VERSION_TAG created"
+          fi
