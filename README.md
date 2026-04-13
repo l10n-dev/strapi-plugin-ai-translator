@@ -43,12 +43,24 @@ yarn add strapi-plugin-ai-translator
 
 Add to your Strapi project's `config/plugins.ts` (or `config/plugins.js`):
 
+**TypeScript** (`config/plugins.ts`):
 ```ts
-export default {
+export default () => ({
   'ai-translator': {
     enabled: true,
   },
-};
+});
+```
+
+**JavaScript** (`config/plugins.js`):
+```js
+'use strict';
+
+module.exports = () => ({
+  'ai-translator': {
+    enabled: true,
+  },
+});
 ```
 
 ### 3. Rebuild and start
@@ -190,7 +202,7 @@ All endpoints are admin-authenticated (`admin::isAuthenticatedAdmin`) and prefix
 | 📧 Email | [support@l10n.dev](mailto:support@l10n.dev) |
 | 🐛 Issues | [GitHub Issues](https://github.com/l10n-dev/strapi-plugin-ai-translator/issues) |
 | 📚 API Docs | [api.l10n.dev/doc](https://api.l10n.dev/doc) |
-| 🌐 Website | [l10n.dev](https://l10n.dev) |
+| 🌐 Website | [l10n](https://l10n.dev).dev |
 
 ---
 
