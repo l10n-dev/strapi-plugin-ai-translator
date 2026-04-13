@@ -2,13 +2,14 @@ import { Typography, Flex, Badge, Button } from "@strapi/design-system";
 import { useIntl } from "react-intl";
 import { URLS } from "ai-l10n-core";
 import { getTrad } from "../utils/getTrad";
+import { localizeUrl } from "../utils/localizeUrl";
 
 interface QuotaDisplayProps {
   remainingBalance?: number;
 }
 
 export const QuotaDisplay = ({ remainingBalance }: QuotaDisplayProps) => {
-  const { formatMessage } = useIntl();
+  const { formatMessage, locale } = useIntl();
 
   return (
     <Flex gap={3} alignItems="center">
@@ -36,7 +37,11 @@ export const QuotaDisplay = ({ remainingBalance }: QuotaDisplayProps) => {
         size="S"
         variant="secondary"
         onClick={() =>
-          window.open(URLS.PRICING, "_blank", "noopener,noreferrer")
+          window.open(
+            localizeUrl(URLS.PRICING, locale),
+            "_blank",
+            "noopener,noreferrer",
+          )
         }
       >
         {formatMessage({

@@ -18,6 +18,7 @@ Translate your Strapi v5 i18n content with l10n.dev [AI localization](https://l1
 - **Incremental Mode** — Only translate new/changed entries, saving your character quota.
 - **Usage Tracking** — Monitor usage and remaining balance.
 - **Persistent Preferences** — Selected target language, incremental toggle, and category selections are saved across sessions.
+- **Localized UI** — The plugin interface is available in 11 languages. It follows the language you select in your Strapi profile.
 
 ---
 
@@ -203,6 +204,43 @@ All endpoints are admin-authenticated (`admin::isAuthenticatedAdmin`) and prefix
 | 🐛 Issues | [GitHub Issues](https://github.com/l10n-dev/strapi-plugin-ai-translator/issues) |
 | 📚 API Docs | [api.l10n.dev/doc](https://api.l10n.dev/doc) |
 | 🌐 Website | [l10n](https://l10n.dev).dev |
+
+---
+
+## Localization
+
+The plugin interface is translated into the following languages:
+
+| Code | Language |
+|------|----------|
+| `en` | English (default) |
+| `de` | German |
+| `es` | Spanish |
+| `fr` | French |
+| `id` | Indonesian |
+| `it` | Italian |
+| `ja` | Japanese |
+| `ko` | Korean |
+| `pt` | Portuguese (Brazil) |
+| `zh-CN` | Chinese (Simplified) |
+| `zh-TW` | Chinese (Traditional) |
+
+To switch the plugin UI language:
+
+1. Click your avatar in the top-right corner of the Strapi admin panel and go to **Profile**.
+2. Under **Preferences → Interface language**, select your language.
+3. The plugin UI (labels, messages, notifications) will display in the chosen language immediately.
+
+To make these languages available in the profile picker, add them to your project's `src/admin/app.js`:
+
+```js
+export default {
+  config: {
+    locales: ['de', 'es', 'fr', 'id', 'it', 'ja', 'ko', 'pt', 'zh-CN', 'zh-TW'],
+  },
+  bootstrap() {},
+};
+```
 
 ---
 

@@ -35,10 +35,42 @@ export default {
   },
 
   async registerTrads({ locales }: { locales: string[] }) {
+    const SUPPORTED = new Set([
+      "de",
+      "en",
+      "es",
+      "fr",
+      "id",
+      "it",
+      "ja",
+      "ko",
+      "pt",
+      "zh-CN",
+      "zh-TW",
+    ]);
+
+    const resolveLocale = (locale: string): string => {
+      for (const s of SUPPORTED) {
+        if (locale.toLowerCase() === s.toLowerCase()) {
+          return s;
+        }
+      }
+      const lang = locale.split("-")[0].toLowerCase();
+      for (const s of SUPPORTED) {
+        if (s.toLowerCase() === lang) {
+          return s;
+        }
+      }
+      return "en";
+    };
+
     return Promise.all(
       locales.map(async (locale: string) => {
+        const resolved = resolveLocale(locale);
         try {
-          const data = await import(`./translations/${locale}.json`);
+          const { default: data } = await import(
+            `./translations/${resolved}.json`
+          );
           return { data, locale };
         } catch {
           return { data: {}, locale };

@@ -16,6 +16,7 @@ import { Play } from "@strapi/icons";
 import { useIntl } from "react-intl";
 import { URLS } from "ai-l10n-core";
 import { getTrad } from "../utils/getTrad";
+import { localizeUrl } from "../utils/localizeUrl";
 import { useContentTypes } from "../hooks/useContentTypes";
 import { usePluginSettings } from "../hooks/usePluginSettings";
 import { useTranslation, useBulkProgress } from "../hooks/useTranslation";
@@ -25,7 +26,7 @@ import { ContentTypeTable } from "../components/ContentTypeTable";
 import { TranslationProgress } from "../components/TranslationProgress";
 
 export const Dashboard = () => {
-  const { formatMessage } = useIntl();
+  const { formatMessage, locale } = useIntl();
   const { toggleNotification } = useNotification();
 
   const {
@@ -395,7 +396,7 @@ export const Dashboard = () => {
                   </>
                 )}
               </Flex>
-              <Link href={URLS.API_KEYS} isExternal>
+              <Link href={localizeUrl(URLS.API_KEYS, locale)} isExternal>
                 {formatMessage({
                   id: getTrad("settings.getApiKeyLink"),
                   defaultMessage: "Get a free key",
@@ -553,7 +554,13 @@ export const Dashboard = () => {
                   )}
                 </Typography>
                 <Flex gap={4} wrap="wrap">
-                  <Link href="https://l10n.dev/terms-of-service" isExternal>
+                  <Link
+                    href={localizeUrl(
+                      "https://l10n.dev/terms-of-service",
+                      locale,
+                    )}
+                    isExternal
+                  >
                     <Typography variant="pi">
                       {formatMessage({
                         id: getTrad("footer.terms"),
@@ -561,7 +568,13 @@ export const Dashboard = () => {
                       })}
                     </Typography>
                   </Link>
-                  <Link href="https://l10n.dev/privacy-policy" isExternal>
+                  <Link
+                    href={localizeUrl(
+                      "https://l10n.dev/privacy-policy",
+                      locale,
+                    )}
+                    isExternal
+                  >
                     <Typography variant="pi">
                       {formatMessage({
                         id: getTrad("footer.privacy"),
@@ -569,7 +582,10 @@ export const Dashboard = () => {
                       })}
                     </Typography>
                   </Link>
-                  <Link href="https://l10n.dev/ws/billing" isExternal>
+                  <Link
+                    href={localizeUrl("https://l10n.dev/ws/billing", locale)}
+                    isExternal
+                  >
                     <Typography variant="pi">
                       {formatMessage({
                         id: getTrad("footer.billing"),
