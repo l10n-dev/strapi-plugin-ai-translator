@@ -193,11 +193,13 @@ export const FieldEditor = ({
                       <Textarea
                         value={source}
                         disabled
-                        style={{
-                          flex: 1,
-                          minHeight: "120px",
-                          height: "max-content",
-                        }}
+                        style={
+                          {
+                            flex: 1,
+                            minHeight: "120px",
+                            fieldSizing: "content",
+                          } as React.CSSProperties
+                        }
                         aria-label={`${field.name} source`}
                       />
                     ) : (
@@ -226,11 +228,13 @@ export const FieldEditor = ({
                       onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                         onFieldChange(field.name, e.target.value)
                       }
-                      style={{
-                        flex: 1,
-                        minHeight: "120px",
-                        height: "max-content",
-                      }}
+                      style={
+                        {
+                          flex: 1,
+                          minHeight: "120px",
+                          fieldSizing: "content",
+                        } as React.CSSProperties
+                      }
                       aria-label={`${field.name} target`}
                     />
                   ) : (
