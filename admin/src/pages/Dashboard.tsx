@@ -67,10 +67,13 @@ export const Dashboard = () => {
     if (settings) {
       if (settings.lastTargetLocale) setTargetLocale(settings.lastTargetLocale);
       setIncremental(settings.incremental ?? true);
-      if (settings.selectedCategories?.length)
+      if (settings.selectedCategories?.length) {
         setSelectedUids(settings.selectedCategories);
+      } else if (data?.contentTypes) {
+        setSelectedUids(data.contentTypes.map((ct) => ct.uid));
+      }
     }
-  }, [settings]);
+  }, [settings, data?.contentTypes]);
 
   // Initialize target locale from locales list only when there is no saved locale
   useEffect(() => {
