@@ -1,0 +1,88 @@
+{
+  "name": "strapi-plugin-ai-translator",
+  "version": "1.0.0",
+  "description": "Strapi v5 plugin to translate i18n content with l10n.dev AI translation service directly from the Admin Panel",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "l10n.dev"
+  },
+  "homepage": "https://l10n.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/l10n-dev/strapi-plugin-ai-translator"
+  },
+  "bugs": {
+    "url": "https://github.com/l10n-dev/strapi-plugin-ai-translator/issues"
+  },
+  "keywords": [
+    "strapi",
+    "plugin",
+    "translation",
+    "i18n",
+    "localization",
+    "l10n",
+    "ai",
+    "internationalization",
+    "multilingual",
+    "strapi-plugin"
+  ],
+  "strapi": {
+    "name": "ai-translator",
+    "displayName": "L10n.dev - AI Translator",
+    "description": "Translate your i18n content with l10n.dev AI - bulk & per-field, side-by-side editor, 30k chars/month free",
+    "kind": "plugin"
+  },
+  "type": "commonjs",
+  "exports": {
+    "./strapi-admin": {
+      "source": "./admin/src/index.ts",
+      "import": "./dist/admin/index.mjs",
+      "require": "./dist/admin/index.js",
+      "default": "./dist/admin/index.js"
+    },
+    "./strapi-server": {
+      "source": "./server/src/index.ts",
+      "import": "./dist/server/index.mjs",
+      "require": "./dist/server/index.js",
+      "default": "./dist/server/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "strapi-server.js",
+    "strapi-admin.js"
+  ],
+  "scripts": {
+    "build": "strapi-plugin build",
+    "build:sourcemap": "strapi-plugin build --sourcemap",
+    "watch": "strapi-plugin watch",
+    "verify": "strapi-plugin verify"
+  },
+  "dependencies": {
+    "ai-l10n-core": "^1.4.1"
+  },
+  "devDependencies": {
+    "@strapi/design-system": "^2.0.0",
+    "@strapi/icons": "^2.0.0",
+    "@strapi/sdk-plugin": "^6.0.0",
+    "@strapi/strapi": "^5.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-intl": "^6.0.0",
+    "react-query": "^3.39.3",
+    "react-router-dom": "^6.0.0",
+    "styled-components": "^6.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@strapi/design-system": "^2.0.0",
+    "@strapi/icons": "^2.0.0",
+    "@strapi/strapi": "^5.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-intl": "^6.0.0",
+    "react-router-dom": "^6.0.0",
+    "styled-components": "^6.0.0"
+  }
+}
