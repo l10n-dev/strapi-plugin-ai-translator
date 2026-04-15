@@ -1,10 +1,11 @@
 # Strapi Plugin - AI Translator (l10n.dev)
 
+[![npm version](https://img.shields.io/npm/v/strapi-plugin-ai-translator.svg)](https://www.npmjs.com/package/strapi-plugin-ai-translator)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 Translate your Strapi v5 i18n content with l10n.dev [AI localization](https://l10n.dev) service - directly from the Admin Panel. Supports bulk auto translation, per-field translation, and a side-by-side editor for reviewing and editing results. The AI engine understands context, supports 165 languages, preserves formatting and structure, and follows grammar and plural form rules - producing natural, human-like translations.
 
 **30,000 characters free every month** - no credit card required.
-
-> **Compatibility:** Strapi v5 only (v5.0.0+)
 
 ---
 
@@ -246,4 +247,4 @@ export default {
 
 ## License
 
-[Apache License Version 2.0](LICENSE) — see the [LICENSE](LICENSE) file for details.
+[MIT](LICENSE) — see the [LICENSE](LICENSE) file for details.
