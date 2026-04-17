@@ -26,13 +26,107 @@ const TRANSLATABLE_FIELD_TYPES = new Set([
   "email",
 ]);
 
+/**
+ * Resolve a dot-notation path (e.g. "seo.metaTitle") from an object.
+ */
+function resolveFieldValue(obj: any, path: string): any {
+  if (!obj) return undefined;
+  return path.split(".").reduce((curr: any, key: string) => curr?.[key], obj);
+}
+
+/**
+ * Build the Strapi Document Service `fields` and `populate` options from
+ * a flat list of localizable field names (which may include dot-notation
+ * paths like "seo.metaTitle" for non-repeatable component sub-fields).
+ *
+ * Dynamiczones use the Strapi v5 fragment-populate syntax:
+ *   populate: { blocks: { on: { 'shared.rich-text': { fields: ['body'] }, ... } } }
+ */
+function buildQueryOptions(
+  localizableFields: LocalizableField[],
+  strapiInstance: any,
+): {
+  fields: string[];
+  populate: Record<string, any>;
+} {
+  const directFields = new Set<string>(["documentId"]);
+  const componentFields = new Map<string, Set<string>>();
+  const dynamiczoneNames = new Set<string>();
+
+  for (const field of localizableFields) {
+    if (field.type === "dynamiczone") {
+      dynamiczoneNames.add(field.name);
+      continue;
+    }
+    const dot = field.name.indexOf(".");
+    if (dot === -1) {
+      directFields.add(field.name);
+    } else {
+      const parent = field.name.slice(0, dot);
+      const sub = field.name.slice(dot + 1);
+      if (!componentFields.has(parent)) componentFields.set(parent, new Set());
+      componentFields.get(parent)!.add(sub);
+    }
+  }
+
+  const populate: Record<string, any> = {};
+  for (const [parent, subFields] of componentFields) {
+    populate[parent] = { fields: Array.from(subFields) };
+  }
+
+  // Dynamiczone: use fragment populate (on: { componentUid: { fields: [...] } })
+  // so Strapi v5 knows exactly which component fields to fetch.
+  for (const dzName of dynamiczoneNames) {
+    // Find the dynamiczone attribute on any content type to get component list.
+    // We search strapi.contentTypes for this field.
+    let componentUids: string[] = [];
+    for (const ct of Object.values<any>(strapiInstance.contentTypes)) {
+      const attr = ct.attributes?.[dzName];
+      if (attr?.type === "dynamiczone" && Array.isArray(attr.components)) {
+        componentUids = attr.components;
+        break;
+      }
+    }
+
+    const on: Record<string, any> = {};
+    for (const uid of componentUids) {
+      const comp = strapiInstance.components[uid];
+      if (!comp?.attributes) continue;
+      const translatableSubFields = Object.entries<any>(comp.attributes)
+        .filter(([, def]) => TRANSLATABLE_FIELD_TYPES.has(def.type))
+        .map(([name]) => name);
+      if (translatableSubFields.length > 0) {
+        on[uid] = { fields: translatableSubFields };
+      }
+    }
+
+    if (Object.keys(on).length > 0) {
+      populate[dzName] = { on };
+    }
+  }
+
+  return { fields: Array.from(directFields), populate };
+}
+
 export default ({ strapi }: { strapi: any }) => ({
   getI18nContentTypes(): ContentTypeInfo[] {
     const result: ContentTypeInfo[] = [];
 
     for (const [uid, contentType] of Object.entries<any>(strapi.contentTypes)) {
       if (!uid.startsWith("api::")) continue;
-      if (!contentType.attributes?.locale) continue;
+
+      // Old Strapi v5: i18n plugin adds `locale` attribute at runtime
+      // New Strapi v5: check pluginOptions.i18n.localized on the schema directly
+      const isI18nEnabled =
+        contentType.attributes?.locale !== undefined ||
+        contentType.pluginOptions?.i18n?.localized === true;
+      if (!isI18nEnabled) continue;
+
+      // Old Strapi v5: each field has pluginOptions.i18n.localized = true
+      // New Strapi v5: no per-field setting; all translatable-type fields are included
+      const hasFieldLevelI18n = Object.values<any>(contentType.attributes).some(
+        (f) => f.pluginOptions?.i18n?.localized === true,
+      );
 
       const localizableFields: LocalizableField[] = [];
 
@@ -41,16 +135,60 @@ export default ({ strapi }: { strapi: any }) => ({
       )) {
         if (fieldName === "locale" || fieldName === "localizations") continue;
 
-        const isLocalized = fieldDef.pluginOptions?.i18n?.localized === true;
+        // Non-repeatable component: recurse into its attributes
+        if (fieldDef.type === "component" && !fieldDef.repeatable) {
+          const component = strapi.components[fieldDef.component];
+          if (component?.attributes) {
+            for (const [subName, subDef] of Object.entries<any>(
+              component.attributes,
+            )) {
+              if (!TRANSLATABLE_FIELD_TYPES.has(subDef.type)) continue;
+              localizableFields.push({
+                name: `${fieldName}.${subName}`,
+                type: (subDef as any).type,
+                required: (subDef as any).required || false,
+              });
+            }
+          }
+          continue;
+        }
+
+        // dynamiczone: include if any referenced component has translatable fields
+        if (fieldDef.type === "dynamiczone") {
+          const hasTranslatable = (fieldDef.components || []).some(
+            (componentUid: string) => {
+              const comp = strapi.components[componentUid];
+              return (
+                comp?.attributes &&
+                Object.values<any>(comp.attributes).some((d: any) =>
+                  TRANSLATABLE_FIELD_TYPES.has(d.type),
+                )
+              );
+            },
+          );
+          if (hasTranslatable) {
+            localizableFields.push({
+              name: fieldName,
+              type: "dynamiczone",
+              required: fieldDef.required || false,
+            });
+          }
+          continue;
+        }
+
+        if (!TRANSLATABLE_FIELD_TYPES.has(fieldDef.type)) continue;
+
+        const isLocalized = hasFieldLevelI18n
+          ? fieldDef.pluginOptions?.i18n?.localized === true
+          : true; // new API: all translatable-type fields are localizable
+
         if (!isLocalized) continue;
 
-        if (TRANSLATABLE_FIELD_TYPES.has(fieldDef.type)) {
-          localizableFields.push({
-            name: fieldName,
-            type: fieldDef.type,
-            required: fieldDef.required || false,
-          });
-        }
+        localizableFields.push({
+          name: fieldName,
+          type: fieldDef.type,
+          required: fieldDef.required || false,
+        });
       }
 
       if (localizableFields.length === 0) continue;
@@ -97,15 +235,15 @@ export default ({ strapi }: { strapi: any }) => ({
     const defaultLocale = await this.getDefaultLocale();
 
     const sourceEntries = await strapi.documents(uid).findMany({
-      locale: defaultLocale,
-      limit: 10000,
-      fields: ["documentId", "updatedAt"],
+        locale: defaultLocale,
+        limit: 10000,
+        fields: ["documentId", "updatedAt"],
     });
 
     const targetEntries = await strapi.documents(uid).findMany({
-      locale: targetLocale,
-      limit: 10000,
-      fields: ["documentId", "updatedAt"],
+        locale: targetLocale,
+        limit: 10000,
+        fields: ["documentId", "updatedAt"],
     });
 
     const targetByDocId = new Map(
@@ -113,17 +251,17 @@ export default ({ strapi }: { strapi: any }) => ({
     );
 
     let translatedCount = 0;
-    for (const source of sourceEntries) {
-      const targetUpdatedAt = targetByDocId.get(source.documentId) as
-        | string
-        | undefined;
-      if (
-        targetUpdatedAt &&
-        new Date(targetUpdatedAt) >= new Date(source.updatedAt as string)
-      ) {
-        translatedCount++;
+      for (const source of sourceEntries) {
+        const targetUpdatedAt = targetByDocId.get(source.documentId) as
+          | string
+          | undefined;
+        if (
+          targetUpdatedAt &&
+          new Date(targetUpdatedAt) >= new Date(source.updatedAt as string)
+        ) {
+          translatedCount++;
+        }
       }
-    }
 
     return {
       totalEntries: sourceEntries.length,
@@ -157,7 +295,10 @@ export default ({ strapi }: { strapi: any }) => ({
       throw new Error(`Content type ${uid} not found or not i18n-enabled`);
 
     const localizableFieldNames = ctInfo.localizableFields.map((f) => f.name);
-    const fieldsToSelect = ["documentId", ...localizableFieldNames];
+    const { fields: fieldsToSelect, populate } = buildQueryOptions(
+      ctInfo.localizableFields,
+      strapi,
+    );
 
     const page = params?.page || 1;
     const pageSize = params?.pageSize || 50;
@@ -165,7 +306,7 @@ export default ({ strapi }: { strapi: any }) => ({
     const filters: any = {};
     if (params?.search) {
       const firstStringField = ctInfo.localizableFields.find(
-        (f) => f.type === "string",
+        (f) => f.type === "string" && !f.name.includes("."),
       );
       if (firstStringField) {
         filters[firstStringField.name] = { $containsi: params.search };
@@ -175,6 +316,7 @@ export default ({ strapi }: { strapi: any }) => ({
     const sourceEntries = await strapi.documents(uid).findMany({
       locale: defaultLocale,
       fields: fieldsToSelect,
+      populate,
       filters,
       start: (page - 1) * pageSize,
       limit: pageSize,
@@ -188,6 +330,7 @@ export default ({ strapi }: { strapi: any }) => ({
           documentId: source.documentId,
           locale: targetLocale,
           fields: fieldsToSelect,
+          populate,
         });
       } catch {
         // Target locale version doesn't exist yet
@@ -195,10 +338,38 @@ export default ({ strapi }: { strapi: any }) => ({
 
       const fields: Record<string, { source: string; target: string }> = {};
       for (const fieldName of localizableFieldNames) {
+        // Dynamiczone fields are expanded below into indexed sub-field keys
+        if (
+          ctInfo.localizableFields.find((f) => f.name === fieldName)?.type ===
+          "dynamiczone"
+        )
+          continue;
         fields[fieldName] = {
-          source: source[fieldName] ?? "",
-          target: target?.[fieldName] ?? "",
+          source: resolveFieldValue(source, fieldName) ?? "",
+          target: resolveFieldValue(target, fieldName) ?? "",
         };
+      }
+
+      // Flatten dynamiczone fields into indexed keys: blocks[0].body, etc.
+      for (const dzField of ctInfo.localizableFields.filter(
+        (f) => f.type === "dynamiczone",
+      )) {
+        const sourceBlocks: any[] = source[dzField.name] || [];
+        const targetBlocks: any[] = target ? target[dzField.name] || [] : [];
+        sourceBlocks.forEach((block: any, index: number) => {
+          const component = strapi.components[block.__component];
+          if (!component?.attributes) return;
+          const targetBlock = targetBlocks[index];
+          for (const [subField, subDef] of Object.entries<any>(
+            component.attributes,
+          )) {
+            if (!TRANSLATABLE_FIELD_TYPES.has((subDef as any).type)) continue;
+            fields[`${dzField.name}[${index}].${subField}`] = {
+              source: String(block[subField] ?? ""),
+              target: String(targetBlock?.[subField] ?? ""),
+            };
+          }
+        });
       }
 
       entries.push({
@@ -217,7 +388,9 @@ export default ({ strapi }: { strapi: any }) => ({
         pageSize,
         hasNextPage: sourceEntries.length === pageSize,
       },
-      localizableFields: ctInfo.localizableFields,
+      localizableFields: ctInfo.localizableFields.filter(
+        (f) => f.type !== "dynamiczone",
+      ),
       contentType: ctInfo,
     };
   },
@@ -230,12 +403,16 @@ export default ({ strapi }: { strapi: any }) => ({
       throw new Error(`Content type ${uid} not found or not i18n-enabled`);
 
     const localizableFieldNames = ctInfo.localizableFields.map((f) => f.name);
-    const fieldsToSelect = ["documentId", ...localizableFieldNames];
+    const { fields: fieldsToSelect, populate } = buildQueryOptions(
+      ctInfo.localizableFields,
+      strapi,
+    );
 
     const source = await strapi.documents(uid).findOne({
       documentId,
       locale: defaultLocale,
       fields: fieldsToSelect,
+      populate,
     });
     if (!source) {
       throw new Error(`Entry ${documentId} not found`);
@@ -247,6 +424,7 @@ export default ({ strapi }: { strapi: any }) => ({
         documentId,
         locale: targetLocale,
         fields: fieldsToSelect,
+        populate,
       });
     } catch {
       // Target doesn't exist yet
@@ -254,10 +432,48 @@ export default ({ strapi }: { strapi: any }) => ({
 
     const fields: Record<string, { source: string; target: string }> = {};
     for (const fieldName of localizableFieldNames) {
+      // Dynamiczone fields are expanded below into indexed sub-field keys
+      if (
+        ctInfo.localizableFields.find((f) => f.name === fieldName)?.type ===
+        "dynamiczone"
+      )
+        continue;
       fields[fieldName] = {
-        source: source[fieldName] ?? "",
-        target: target?.[fieldName] ?? "",
+        source: resolveFieldValue(source, fieldName) ?? "",
+        target: resolveFieldValue(target, fieldName) ?? "",
       };
+    }
+
+    // Flatten dynamiczone fields into indexed keys and build per-entry localizableFields
+    // (dynamiczone fields themselves are NOT added to extendedLocalizableFields)
+    const extendedLocalizableFields: LocalizableField[] = [];
+    for (const field of ctInfo.localizableFields) {
+      if (field.type !== "dynamiczone") {
+        extendedLocalizableFields.push(field);
+        continue;
+      }
+      const sourceBlocks: any[] = source[field.name] || [];
+      const targetBlocks: any[] = target ? target[field.name] || [] : [];
+      sourceBlocks.forEach((block: any, index: number) => {
+        const component = strapi.components[block.__component];
+        if (!component?.attributes) return;
+        const targetBlock = targetBlocks[index];
+        for (const [subField, subDef] of Object.entries<any>(
+          component.attributes,
+        )) {
+          if (!TRANSLATABLE_FIELD_TYPES.has((subDef as any).type)) continue;
+          const key = `${field.name}[${index}].${subField}`;
+          fields[key] = {
+            source: String(block[subField] ?? ""),
+            target: String(targetBlock?.[subField] ?? ""),
+          };
+          extendedLocalizableFields.push({
+            name: key,
+            type: (subDef as any).type,
+            required: false,
+          });
+        }
+      });
     }
 
     return {
@@ -266,8 +482,124 @@ export default ({ strapi }: { strapi: any }) => ({
       targetLocale,
       fields,
       hasTarget: !!target,
-      localizableFields: ctInfo.localizableFields,
+      localizableFields: extendedLocalizableFields,
       contentType: ctInfo,
     };
+  },
+
+  /**
+   * Reconstruct the data object to pass to strapi.documents().update() from a
+   * flat Record<string, string> of translated values.
+   *
+   * Handles three key formats:
+   *   - "title"          → direct field
+   *   - "seo.metaTitle"  → non-repeatable component sub-field
+   *   - "blocks[0].body" → dynamiczone block sub-field (fetches source structure)
+   */
+  async rebuildDataFromTranslated(
+    uid: string,
+    documentId: string,
+    translatedFields: Record<string, string>,
+  ): Promise<Record<string, any>> {
+    const dzPattern = /^([^\[]+)\[(\d+)\]\.(.+)$/;
+
+    // Separate dynamiczone keys from the rest
+    const dzGroups: Record<string, Record<number, Record<string, string>>> = {};
+    const otherFields: Record<string, string> = {};
+
+    for (const [key, value] of Object.entries(translatedFields)) {
+      const match = key.match(dzPattern);
+      if (match) {
+        const [, fieldName, indexStr, subField] = match;
+        const index = parseInt(indexStr, 10);
+        if (!dzGroups[fieldName]) dzGroups[fieldName] = {};
+        if (!dzGroups[fieldName][index]) dzGroups[fieldName][index] = {};
+        dzGroups[fieldName][index][subField] = value;
+      } else {
+        otherFields[key] = value;
+      }
+    }
+
+    // Reconstruct component dot-notation keys into nested objects
+    const data: Record<string, any> = {};
+    for (const [key, value] of Object.entries(otherFields)) {
+      const dot = key.indexOf(".");
+      if (dot === -1) {
+        data[key] = value;
+      } else {
+        const parent = key.slice(0, dot);
+        const sub = key.slice(dot + 1);
+        if (!data[parent] || typeof data[parent] !== "object") {
+          data[parent] = {};
+        }
+        data[parent][sub] = value;
+      }
+    }
+
+    // Reconstruct dynamiczone arrays using source locale blocks as template
+    if (Object.keys(dzGroups).length > 0) {
+      const defaultLocale = await this.getDefaultLocale();
+
+      // Build on-fragment populate for each dynamiczone field
+      const populate: Record<string, any> = {};
+      for (const dzName of Object.keys(dzGroups)) {
+        let componentUids: string[] = [];
+        for (const ct of Object.values<any>(strapi.contentTypes)) {
+          const attr = ct.attributes?.[dzName];
+          if (attr?.type === "dynamiczone" && Array.isArray(attr.components)) {
+            componentUids = attr.components;
+            break;
+          }
+        }
+        const on: Record<string, any> = {};
+        for (const compUid of componentUids) {
+          const comp = strapi.components[compUid];
+          if (comp?.attributes) {
+            const translatableAttrs = Object.entries<any>(comp.attributes)
+              .filter(([, def]) => TRANSLATABLE_FIELD_TYPES.has(def.type))
+              .map(([name]) => name);
+            if (translatableAttrs.length > 0) {
+              on[compUid] = { fields: translatableAttrs };
+            }
+          }
+        }
+        if (Object.keys(on).length > 0) {
+          populate[dzName] = { on };
+        }
+      }
+
+      const sourceEntry = await strapi.documents(uid).findOne({
+        documentId,
+        locale: defaultLocale,
+        fields: ["documentId"],
+        populate,
+      });
+
+      for (const [fieldName, indexedFields] of Object.entries(dzGroups)) {
+        const sourceBlocks: any[] = sourceEntry?.[fieldName] || [];
+        data[fieldName] = sourceBlocks.map((block: any, index: number) => {
+          const translated = indexedFields[index] || {};
+          // Only include __component and translatable field values.
+          // Media/relation fields from the source cannot be passed directly
+          // to the document service update — Strapi rejects them as invalid keys.
+          const comp = strapi.components[block.__component];
+          const safeFields: Record<string, any> = {
+            __component: block.__component,
+          };
+          if (comp?.attributes) {
+            for (const [attr, def] of Object.entries<any>(comp.attributes)) {
+              if (TRANSLATABLE_FIELD_TYPES.has(def.type)) {
+                // Use translated value if provided, otherwise preserve source value
+                safeFields[attr] =
+                  attr in translated ? translated[attr] : block[attr];
+              }
+            }
+          }
+          return safeFields;
+        });
+      }
+    }
+
+    return data;
   },
 });

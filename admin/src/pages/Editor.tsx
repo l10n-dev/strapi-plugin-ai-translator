@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useReducer } from "react";
+import { useState, useEffect, useCallback, useReducer, useMemo } from "react";
 import {
   Box,
   Button,
@@ -172,6 +172,22 @@ export const Editor = () => {
   const localizableFields = entriesPages?.pages?.[0]?.localizableFields || [];
   const contentType = entriesPages?.pages?.[0]?.contentType;
 
+  // Build a lookup from the base localizable fields list.
+  // For the selected entry, include any extra indexed keys (e.g. blocks[0].body)
+  // that exist in fieldValues but are not in the base localizableFields.
+  const selectedEntry = entries.find(
+    (e) => e.documentId === selectedDocumentId,
+  );
+
+  const displayLocalizableFields = useMemo(() => {
+    if (!selectedEntry) return localizableFields;
+    const knownNames = new Set(localizableFields.map((f: any) => f.name));
+    const extra = Object.keys(selectedEntry.fields)
+      .filter((key) => !knownNames.has(key))
+      .map((key) => ({ name: key, type: "text", required: false }));
+    return [...localizableFields, ...extra];
+  }, [selectedEntry, localizableFields]);
+
   // Select first entry if none selected
   useEffect(() => {
     if (entries.length > 0 && !selectedDocumentId) {
@@ -179,9 +195,6 @@ export const Editor = () => {
     }
   }, [entries, selectedDocumentId]);
 
-  const selectedEntry = entries.find(
-    (e) => e.documentId === selectedDocumentId,
-  );
   const modifiedDocumentIds = new Set(Object.keys(draftState.changes));
 
   const primaryFieldName = localizableFields.find(
@@ -210,7 +223,7 @@ export const Editor = () => {
       { uid, documentId: selectedDocumentId, targetLocale },
       {
         onSuccess: (result) => {
-          if (result.status === "success" && result.translations) {
+          if (result.translations) {
             dispatch({
               type: "SET_TRANSLATED",
               documentId: selectedDocumentId,
@@ -219,14 +232,6 @@ export const Editor = () => {
             setLastCharsUsed(result.charsUsed);
             if (result.remainingBalance != null)
               updateBalance(result.remainingBalance);
-          } else if (result.reason === "insufficientBalance") {
-            toggleNotification({
-              type: "warning",
-              message: formatMessage({
-                id: getTrad("notification.insufficientBalance"),
-                defaultMessage: `Insufficient balance. Purchase more at ${URLS.PRICING}`,
-              }),
-            });
           } else {
             toggleNotification({
               type: "warning",
@@ -235,8 +240,27 @@ export const Editor = () => {
           }
           setIsTranslatingEntry(false);
         },
-        onError: (err) => {
-          toggleNotification({ type: "warning", message: err.message });
+        onError: (err: any) => {
+          const status = err?.status;
+          if (status === 402) {
+            toggleNotification({
+              type: "warning",
+              message: formatMessage({
+                id: getTrad("notification.insufficientBalance"),
+                defaultMessage: `Insufficient balance. Purchase more at ${URLS.PRICING}`,
+              }),
+            });
+          } else if (status === 401) {
+            toggleNotification({
+              type: "warning",
+              message: formatMessage({
+                id: getTrad("notification.unauthorized"),
+                defaultMessage: "Unauthorized. Please check your API Key.",
+              }),
+            });
+          } else {
+            toggleNotification({ type: "warning", message: err.message || "Translation failed" });
+          }
           setIsTranslatingEntry(false);
         },
       },
@@ -265,7 +289,7 @@ export const Editor = () => {
         },
         {
           onSuccess: (result) => {
-            if (result.status === "success" && result.translations) {
+            if (result.translations) {
               dispatch({
                 type: "SET_TRANSLATED",
                 documentId: selectedDocumentId,
@@ -274,14 +298,6 @@ export const Editor = () => {
               setLastCharsUsed(result.charsUsed);
               if (result.remainingBalance != null)
                 updateBalance(result.remainingBalance);
-            } else if (result.reason === "insufficientBalance") {
-              toggleNotification({
-                type: "warning",
-                message: formatMessage({
-                  id: getTrad("notification.insufficientBalance"),
-                  defaultMessage: `Insufficient balance. Purchase more at ${URLS.PRICING}`,
-                }),
-              });
             } else {
               toggleNotification({
                 type: "warning",
@@ -290,8 +306,27 @@ export const Editor = () => {
             }
             setTranslatingField(undefined);
           },
-          onError: (err) => {
-            toggleNotification({ type: "warning", message: err.message });
+          onError: (err: any) => {
+            const status = err?.status;
+            if (status === 402) {
+              toggleNotification({
+                type: "warning",
+                message: formatMessage({
+                  id: getTrad("notification.insufficientBalance"),
+                  defaultMessage: `Insufficient balance. Purchase more at ${URLS.PRICING}`,
+                }),
+              });
+            } else if (status === 401) {
+              toggleNotification({
+                type: "warning",
+                message: formatMessage({
+                  id: getTrad("notification.unauthorized"),
+                  defaultMessage: "Unauthorized. Please check your API Key.",
+                }),
+              });
+            } else {
+              toggleNotification({ type: "warning", message: err.message || "Translation failed" });
+            }
             setTranslatingField(undefined);
           },
         },
@@ -518,7 +553,7 @@ export const Editor = () => {
                 <Box style={{ width: "100%" }}>
                   {selectedEntry ? (
                     <FieldEditor
-                      localizableFields={localizableFields}
+                      localizableFields={displayLocalizableFields}
                       fieldValues={selectedEntry.fields}
                       draftValues={draftValuesForSelected}
                       onFieldChange={handleFieldChange}
