@@ -55,5 +55,10 @@
   "ai-translator.footer.privacy": "Datenschutzrichtlinie",
   "ai-translator.footer.billing": "Abrechnung",
   "ai-translator.contentManager.translateFrom": "Übersetzen von {locale}",
-  "ai-translator.contentManager.translated": "Übersetzung angewendet. Überprüfen und speichern, wenn Sie bereit sind."
+  "ai-translator.contentManager.translated": "Übersetzung angewendet. Überprüfen und speichern, wenn Sie bereit sind.",
+  "ai-translator.editor.translateEntry": "Eintrag übersetzen",
+  "ai-translator.editor.source": "Quelle",
+  "ai-translator.editor.target": "Ziel",
+  "ai-translator.editor.modified": "Geändert",
+  "ai-translator.editor.charsUsed": "{count} Zeichen verwendet"
 }

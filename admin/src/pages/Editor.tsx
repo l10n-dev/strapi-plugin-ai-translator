@@ -22,6 +22,7 @@ import { useTranslation } from "../hooks/useTranslation";
 import { useLocales } from "../hooks/useLocales";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { fetchEntries } from "../utils/api";
+import { useBalance } from "../hooks/useBalance";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { QuotaDisplay } from "../components/QuotaDisplay";
 import { EntryList } from "../components/EntryList";
@@ -122,9 +123,7 @@ export const Editor = () => {
   >();
   const [isTranslatingEntry, setIsTranslatingEntry] = useState(false);
   const [lastCharsUsed, setLastCharsUsed] = useState<number | undefined>();
-  const [remainingBalance, setRemainingBalance] = useState<
-    number | undefined
-  >();
+  const { remainingBalance, updateBalance } = useBalance();
   const [draftState, dispatch] = useReducer(draftReducer, { changes: {} });
 
   // Initialize target locale
@@ -218,7 +217,8 @@ export const Editor = () => {
               translations: result.translations,
             });
             setLastCharsUsed(result.charsUsed);
-            setRemainingBalance(result.remainingBalance);
+            if (result.remainingBalance != null)
+              updateBalance(result.remainingBalance);
           } else if (result.reason === "insufficientBalance") {
             toggleNotification({
               type: "warning",
@@ -272,7 +272,8 @@ export const Editor = () => {
                 translations: result.translations,
               });
               setLastCharsUsed(result.charsUsed);
-              setRemainingBalance(result.remainingBalance);
+              if (result.remainingBalance != null)
+                updateBalance(result.remainingBalance);
             } else if (result.reason === "insufficientBalance") {
               toggleNotification({
                 type: "warning",

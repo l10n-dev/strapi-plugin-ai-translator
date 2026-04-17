@@ -1,4 +1,4 @@
-import { L10nTranslationService, FinishReason, URLS } from "ai-l10n-core";
+import { L10nTranslationService, URLS } from "ai-l10n-core";
 
 export interface TranslateEntryResult {
   status: "success" | "error";
@@ -20,10 +20,6 @@ export interface BulkProgress {
 }
 
 const createStrapiLogger = (strapi: any) => {
-  const ctx = {
-    lastErrorUrl: undefined as string | undefined,
-    lastErrorMessage: undefined as string | undefined,
-  };
   return {
     logger: {
       logInfo(message: string) {
@@ -37,17 +33,21 @@ const createStrapiLogger = (strapi: any) => {
       },
       showAndLogError(
         message: string,
-        _error?: unknown,
-        _prefix?: string,
+        error?: unknown,
+        context?: string,
         _actionLabel?: string,
-        actionUrl?: string,
+        _actionUrl?: string,
       ) {
-        strapi.log.error(`[ai-translator] ${message}`);
-        ctx.lastErrorUrl = actionUrl;
-        ctx.lastErrorMessage = message;
+        if (context) {
+          strapi.log.error(`[ai-translator] ${context}: ${message}`);
+        } else {
+          strapi.log.error(`[ai-translator] ${message}`);
+        }
+        if (error) {
+          strapi.log.error(error);
+        }
       },
     },
-    getLastError: () => ctx,
   };
 };
 
@@ -112,15 +112,14 @@ export default ({ strapi }: { strapi: any }) => {
         return { status: "success", translations: {}, charsUsed: 0 };
       }
 
-      const { logger, getLastError } = createStrapiLogger(strapi);
+      const { logger } = createStrapiLogger(strapi);
       const l10nService = new L10nTranslationService(logger);
 
       try {
-        const result = await l10nService.translate(
+        const response = await l10nService.translate(
           {
             sourceStrings: JSON.stringify(sourceObj),
             targetLanguageCode: targetLocale,
-            returnTranslationsAsString: true,
             client: "strapi-ai-translator",
             translateOnlyNewStrings: false,
             schema: null,
@@ -129,19 +128,16 @@ export default ({ strapi }: { strapi: any }) => {
           apiKey,
         );
 
-        if (
-          (!result && getLastError().lastErrorUrl === URLS.PRICING) ||
-          result?.finishReason === FinishReason.insufficientBalance
-        ) {
+        if (!response.success && response.reason === "paymentRequired") {
           return {
             status: "error",
             reason: "insufficientBalance",
             message: `Not enough characters remaining. Purchase more at ${URLS.PRICING}`,
-            remainingBalance: result?.remainingBalance,
+            remainingBalance: response?.currentBalance,
           };
         }
 
-        if (!result) {
+        if (!response.success && response.reason === "unauthorized") {
           return {
             status: "error",
             reason: "unauthorized",
@@ -149,6 +145,15 @@ export default ({ strapi }: { strapi: any }) => {
           };
         }
 
+        if (!response.success) {
+          return {
+            status: "error",
+            reason: "unknown",
+            message: response.message || "Translation failed",
+          };
+        }
+
+        const result = response.data;
         let translations: Record<string, string> = {};
         if (result.translations) {
           translations =
@@ -170,6 +175,27 @@ export default ({ strapi }: { strapi: any }) => {
           message: error.message || "Translation failed",
         };
       }
+    },
+
+    async getBalance(): Promise<{ currentBalance?: number; error?: string }> {
+      const settingsService = strapi
+        .plugin("ai-translator")
+        .service("settings");
+      const apiKey = await settingsService.getApiKey();
+
+      if (!apiKey) {
+        return { error: "noApiKey" };
+      }
+
+      const { logger } = createStrapiLogger(strapi);
+      const l10nService = new L10nTranslationService(logger);
+      const response = await l10nService.getBalance(apiKey);
+
+      if (!response.success) {
+        return { error: response.reason || "serverError" };
+      }
+
+      return { currentBalance: response.data.currentBalance };
     },
 
     async saveTranslation(

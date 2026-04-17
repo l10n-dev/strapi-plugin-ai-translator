@@ -55,5 +55,10 @@
   "ai-translator.footer.privacy": "Kebijakan Privasi",
   "ai-translator.footer.billing": "Penagihan",
   "ai-translator.contentManager.translateFrom": "Terjemahkan dari {locale}",
-  "ai-translator.contentManager.translated": "Terjemahan diterapkan. Tinjau dan simpan saat siap."
+  "ai-translator.contentManager.translated": "Terjemahan diterapkan. Tinjau dan simpan saat siap.",
+  "ai-translator.editor.translateEntry": "Terjemahkan entri",
+  "ai-translator.editor.source": "Sumber",
+  "ai-translator.editor.target": "Target",
+  "ai-translator.editor.modified": "Diubah",
+  "ai-translator.editor.charsUsed": "{count} karakter digunakan"
 }

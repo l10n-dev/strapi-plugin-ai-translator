@@ -55,5 +55,10 @@
   "ai-translator.footer.privacy": "隱私權政策",
   "ai-translator.footer.billing": "帳務資訊",
   "ai-translator.contentManager.translateFrom": "從 {locale} 翻譯",
-  "ai-translator.contentManager.translated": "翻譯已套用。請檢查並在準備好後儲存。"
+  "ai-translator.contentManager.translated": "翻譯已套用。請檢查並在準備好後儲存。",
+  "ai-translator.editor.translateEntry": "翻譯項目",
+  "ai-translator.editor.source": "來源內容",
+  "ai-translator.editor.target": "目標內容",
+  "ai-translator.editor.modified": "已修改",
+  "ai-translator.editor.charsUsed": "{count} 個字元已使用"
 }
