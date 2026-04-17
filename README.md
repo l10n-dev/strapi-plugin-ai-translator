@@ -107,6 +107,8 @@ All settings are managed through the Admin Panel UI — no file-based configurat
 - At least **two locales** must be configured in Settings → Internationalization.
 - Content Types you want to translate must have **"Enable localization for this content-type"** turned on, with individual fields marked as localizable.
 
+> **Important — per-field localization required.** Each field you want translated must have `"pluginOptions": { "i18n": { "localized": true } }` set in its schema. Without this, Strapi treats the field as shared across all locales — saving a translation would overwrite the source locale. When you enable localization for a Content Type through the Content-Type Builder UI, this is set automatically. If you edit schemas manually or use a Strapi CLI-generated project, verify each translatable field is marked accordingly. See the [Strapi i18n documentation](https://docs.strapi.io/cms/features/internationalization) for details.
+
 ### Dashboard
 
 1. Open **L10n.dev - AI Translator** from the sidebar.

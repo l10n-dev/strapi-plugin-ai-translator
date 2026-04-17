@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-04-18
+
+### Fixed
+
+- **Translate button in Content Manager for new locale entries** — The "Translate from {locale}" button now works when creating a new locale variant of an existing entry. Previously it silently did nothing because `form.values.documentId` is absent on an unsaved locale entry; the fix falls back to the `id` exposed by `useContentManagerContext` (sourced from the URL route param).
+- **Error notifications for 401 / 402 in Content Manager button** — Unauthorized and insufficient-balance errors now show the correct localised notification instead of "Unknown Server Error". The previous code checked `result.reason` inside the `try` block, which is unreachable for non-2xx responses because Strapi's fetch client throws a `FetchError` before the caller sees the body. Error handling now lives in `catch` and branches on `err.status` (402 → insufficient balance, 401 → unauthorized).
+- **Same error-handling fix in the Editor page** — `handleTranslateEntry` and `handleTranslateField` had the same dead `result.reason` checks in `onSuccess`; replaced by `err.status` branches in `onError`.
+- **Strapi v5 i18n content-type detection** — Content types and their translatable fields are now correctly detected in both the legacy per-field format (`pluginOptions.i18n.localized = true` on each attribute) and the current format (top-level `pluginOptions.i18n.localized = true` on the content type, all translatable-type fields included automatically). Previously only one of the two formats was handled, causing some content types or fields to be missed depending on the Strapi version.
+
 ## [1.1.0] - 2026-04-17
 
 ### Added

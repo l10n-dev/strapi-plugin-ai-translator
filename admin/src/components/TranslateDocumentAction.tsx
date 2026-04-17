@@ -22,7 +22,7 @@ export const TranslateButton = () => {
   const { formatMessage } = useIntl();
   const { toggleNotification } = useNotification();
   const client = useFetchClient();
-  const { form, contentType } = useContentManagerContext();
+  const { form, contentType, id: contextId } = useContentManagerContext();
   const [{ query }] = useQueryParams<{
     plugins?: { i18n?: { locale?: string } };
   }>();
@@ -55,7 +55,7 @@ export const TranslateButton = () => {
 
   const handleTranslate = async () => {
     const documentId =
-      (form as any).values?.documentId ?? (form as any).values?.id;
+      (form as any).values?.documentId ?? (form as any).values?.id ?? contextId;
     if (!documentId || !(contentType as any)?.uid) return;
 
     setIsLoading(true);
@@ -66,17 +66,7 @@ export const TranslateButton = () => {
         targetLocale,
       });
 
-      if (result.status !== "success" || !result.translations) {
-        if (result.reason === "insufficientBalance") {
-          toggleNotification({
-            type: "warning",
-            message: formatMessage({
-              id: getTrad("notification.insufficientBalance"),
-              defaultMessage: `Insufficient balance. Purchase more at ${URLS.PRICING}`,
-            }),
-          });
-          return;
-        }
+      if (!result.translations) {
         throw new Error(result.message || "Translation failed");
       }
 
@@ -93,10 +83,29 @@ export const TranslateButton = () => {
         }),
       });
     } catch (err: any) {
-      toggleNotification({
-        type: "warning",
-        message: err.message || "Translation failed",
-      });
+      const status = err?.status;
+      if (status === 402) {
+        toggleNotification({
+          type: "warning",
+          message: formatMessage({
+            id: getTrad("notification.insufficientBalance"),
+            defaultMessage: `Insufficient balance. Purchase more at ${URLS.PRICING}`,
+          }),
+        });
+      } else if (status === 401) {
+        toggleNotification({
+          type: "warning",
+          message: formatMessage({
+            id: getTrad("notification.unauthorized"),
+            defaultMessage: "Unauthorized. Please check your API Key.",
+          }),
+        });
+      } else {
+        toggleNotification({
+          type: "warning",
+          message: err.message || "Translation failed",
+        });
+      }
     } finally {
       setIsLoading(false);
     }

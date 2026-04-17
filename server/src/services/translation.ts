@@ -204,6 +204,16 @@ export default ({ strapi }: { strapi: any }) => {
       targetLocale: string,
       translatedFields: Record<string, string>,
     ) {
+      const contentTypeService = strapi
+        .plugin("ai-translator")
+        .service("content-type");
+
+      const data = await contentTypeService.rebuildDataFromTranslated(
+        uid,
+        documentId,
+        translatedFields,
+      );
+
       const existing = await strapi
         .documents(uid)
         .findOne({
@@ -217,13 +227,13 @@ export default ({ strapi }: { strapi: any }) => {
         return strapi.documents(uid).update({
           documentId,
           locale: targetLocale,
-          data: translatedFields,
+          data,
         });
       } else {
         return strapi.documents(uid).update({
           documentId,
           locale: targetLocale,
-          data: translatedFields,
+          data,
         });
       }
     },
