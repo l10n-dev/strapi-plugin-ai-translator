@@ -55,5 +55,10 @@
   "ai-translator.footer.privacy": "Política de Privacidade",
   "ai-translator.footer.billing": "Faturamento",
   "ai-translator.contentManager.translateFrom": "Traduzir de {locale}",
-  "ai-translator.contentManager.translated": "Tradução aplicada. Revise e salve quando estiver pronto."
+  "ai-translator.contentManager.translated": "Tradução aplicada. Revise e salve quando estiver pronto.",
+  "ai-translator.editor.translateEntry": "Traduzir entrada",
+  "ai-translator.editor.source": "Origem",
+  "ai-translator.editor.target": "Destino",
+  "ai-translator.editor.modified": "Modificado",
+  "ai-translator.editor.charsUsed": "{count} caracteres usados"
 }

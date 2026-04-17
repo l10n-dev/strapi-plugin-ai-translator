@@ -71,6 +71,14 @@ export default {
   },
   {
     method: 'GET',
+    path: '/balance',
+    handler: 'translation.balance',
+    config: {
+      policies: ['admin::isAuthenticatedAdmin'],
+    },
+  },
+  {
+    method: 'GET',
     path: '/translate/status',
     handler: 'translation.status',
     config: {

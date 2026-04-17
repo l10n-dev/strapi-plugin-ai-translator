@@ -55,5 +55,10 @@
   "ai-translator.footer.privacy": "개인정보 처리방침",
   "ai-translator.footer.billing": "결제",
   "ai-translator.contentManager.translateFrom": "{locale}에서 번역",
-  "ai-translator.contentManager.translated": "번역이 적용되었습니다. 준비가 되면 검토 후 저장하세요."
+  "ai-translator.contentManager.translated": "번역이 적용되었습니다. 준비가 되면 검토 후 저장하세요.",
+  "ai-translator.editor.translateEntry": "항목 번역",
+  "ai-translator.editor.source": "원본",
+  "ai-translator.editor.target": "대상",
+  "ai-translator.editor.modified": "변경됨",
+  "ai-translator.editor.charsUsed": "{count}자 사용됨"
 }

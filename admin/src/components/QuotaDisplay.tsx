@@ -13,15 +13,17 @@ export const QuotaDisplay = ({ remainingBalance }: QuotaDisplayProps) => {
 
   return (
     <Flex gap={3} alignItems="center">
-      <Typography variant="pi" textColor="neutral600">
-        {formatMessage(
-          {
-            id: getTrad("dashboard.freeQuota"),
-            defaultMessage: "{count} characters free monthly",
-          },
-          { count: (30000).toLocaleString() },
-        )}
-      </Typography>
+      {!remainingBalance && remainingBalance !== 0 && (
+        <Typography variant="pi" textColor="neutral600">
+          {formatMessage(
+            {
+              id: getTrad("dashboard.freeQuota"),
+              defaultMessage: "{count} characters free monthly",
+            },
+            { count: (30000).toLocaleString() },
+          )}
+        </Typography>
+      )}
       {remainingBalance != null && remainingBalance >= 0 && (
         <Badge active>
           {formatMessage(

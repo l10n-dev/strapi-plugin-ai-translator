@@ -106,3 +106,6 @@ export const fetchBulkStatus = (client: any) =>
 
 export const cancelBulk = (client: any) =>
   pluginRequest(client, "post", "/translate/cancel");
+
+export const fetchBalance = (client: any) =>
+  pluginRequest(client, "get", "/balance");

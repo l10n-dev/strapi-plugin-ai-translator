@@ -55,5 +55,10 @@
   "ai-translator.footer.privacy": "プライバシーポリシー",
   "ai-translator.footer.billing": "請求",
   "ai-translator.contentManager.translateFrom": "{locale} から翻訳",
-  "ai-translator.contentManager.translated": "翻訳を適用しました。内容を確認して保存してください。"
+  "ai-translator.contentManager.translated": "翻訳を適用しました。内容を確認して保存してください。",
+  "ai-translator.editor.translateEntry": "エントリを翻訳",
+  "ai-translator.editor.source": "ソース",
+  "ai-translator.editor.target": "ターゲット",
+  "ai-translator.editor.modified": "変更済み",
+  "ai-translator.editor.charsUsed": "{count} 文字使用済み"
 }

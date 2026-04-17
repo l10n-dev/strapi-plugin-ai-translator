@@ -17,6 +17,7 @@ import { useIntl } from "react-intl";
 import { URLS } from "ai-l10n-core";
 import { getTrad } from "../utils/getTrad";
 import { localizeUrl } from "../utils/localizeUrl";
+import { useBalance } from "../hooks/useBalance";
 import { useContentTypes } from "../hooks/useContentTypes";
 import { usePluginSettings } from "../hooks/usePluginSettings";
 import { useTranslation, useBulkProgress } from "../hooks/useTranslation";
@@ -39,9 +40,6 @@ export const Dashboard = () => {
   const [incremental, setIncremental] = useState(true);
   const [selectedUids, setSelectedUids] = useState<string[]>([]);
   const [isBulkRunning, setIsBulkRunning] = useState(false);
-  const [remainingBalance, setRemainingBalance] = useState<
-    number | undefined
-  >();
   const [translatingUid, setTranslatingUid] = useState<string | undefined>();
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
@@ -53,6 +51,11 @@ export const Dashboard = () => {
   const queryClient = useQueryClient();
   const { translateBulk } = useTranslation();
   const { data: bulkProgress } = useBulkProgress(isBulkRunning);
+  const {
+    remainingBalance,
+    updateBalance,
+    invalidate: invalidateBalance,
+  } = useBalance();
 
   // Clear stale bulk-status cache when navigating away so the
   // completion notification doesn't re-fire on next mount.
@@ -86,7 +89,12 @@ export const Dashboard = () => {
   // Track bulk progress
   useEffect(() => {
     if (bulkProgress) {
-      setRemainingBalance(bulkProgress.remainingBalance);
+      if (
+        bulkProgress.remainingBalance != null &&
+        bulkProgress.remainingBalance >= 0
+      ) {
+        updateBalance(bulkProgress.remainingBalance);
+      }
       if (
         bulkProgress.status === "completed" ||
         bulkProgress.status === "stopped"
@@ -154,6 +162,7 @@ export const Dashboard = () => {
       await updateAsync({ apiKey: trimmed });
       setApiKeyInput("");
       setShowApiKeyInput(false);
+      invalidateBalance();
       toggleNotification({
         type: "success",
         message: formatMessage({

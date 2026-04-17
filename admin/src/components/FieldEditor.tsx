@@ -112,6 +112,7 @@ export const FieldEditor = ({
                 justifyContent="space-between"
                 alignItems="center"
                 paddingBottom={2}
+                wrap={"wrap"}
               >
                 <Flex gap={2} alignItems="center">
                   <Typography variant="sigma" textColor="neutral600">
@@ -126,16 +127,25 @@ export const FieldEditor = ({
                       backgroundColor="warning100"
                       textColor="warning700"
                     >
-                      modified
+                      {formatMessage({
+                        id: getTrad("editor.modified"),
+                        defaultMessage: "Modified",
+                      })}
                     </Badge>
                   )}
-                  {isTranslating && lastCharsUsed !== undefined && (
+                  {isModified && lastCharsUsed !== undefined && (
                     <Badge
                       active
                       backgroundColor="primary100"
                       textColor="primary700"
                     >
-                      {lastCharsUsed} chars used
+                      {formatMessage(
+                        {
+                          id: getTrad("editor.charsUsed"),
+                          defaultMessage: "{count} chars used",
+                        },
+                        { count: lastCharsUsed },
+                      )}
                     </Badge>
                   )}
                 </Flex>
@@ -187,7 +197,10 @@ export const FieldEditor = ({
                       textColor="neutral500"
                       paddingBottom={1}
                     >
-                      Source
+                      {formatMessage({
+                        id: getTrad("editor.source"),
+                        defaultMessage: "Source",
+                      })}
                     </Typography>
                     {isLongText(field.type) ? (
                       <Textarea
@@ -220,7 +233,10 @@ export const FieldEditor = ({
                     textColor="neutral500"
                     paddingBottom={1}
                   >
-                    Target
+                    {formatMessage({
+                      id: getTrad("editor.target"),
+                      defaultMessage: "Target",
+                    })}
                   </Typography>
                   {isLongText(field.type) ? (
                     <Textarea

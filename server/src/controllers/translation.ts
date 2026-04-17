@@ -71,6 +71,13 @@ export default ({ strapi }: { strapi: any }) => ({
     ctx.body = { status: "saved" };
   },
 
+  async balance(ctx: any) {
+    const translationService = strapi
+      .plugin("ai-translator")
+      .service("translation");
+    ctx.body = await translationService.getBalance();
+  },
+
   async status(ctx: any) {
     const translationService = strapi
       .plugin("ai-translator")

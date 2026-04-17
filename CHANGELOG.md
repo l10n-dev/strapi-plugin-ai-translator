@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-17
+
+### Added
+
+- **Live Balance on Dashboard Load** — When the Dashboard opens, the plugin now calls `getBalance` from `ai-l10n-core` to retrieve the current character balance. The remaining-balance badge in `QuotaDisplay` is populated immediately without needing to run a translation first. If the API key is not configured or the request fails, the badge is hidden and only the "30,000 characters free monthly" default message is shown.
+
 ## [1.0.1] - 2026-04-15
 
 ### Changed
