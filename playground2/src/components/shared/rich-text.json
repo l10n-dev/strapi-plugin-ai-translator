@@ -39,6 +39,22 @@
       "type": "component",
       "component": "shared.test-blocks",
       "repeatable": true
+    },
+    "datetest": {
+      "type": "date",
+      "default": "2026-06-14"
+    },
+    "numbertest": {
+      "type": "biginteger"
+    },
+    "asdasdasdad": {
+      "type": "password"
+    },
+    "emailtest": {
+      "type": "email"
+    },
+    "booltest": {
+      "type": "boolean"
     }
   }
 }

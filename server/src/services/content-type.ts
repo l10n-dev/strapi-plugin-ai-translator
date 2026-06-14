@@ -25,6 +25,13 @@ const TRANSLATABLE_FIELD_TYPES = new Set([
   "blocks",
   "json",
   "uid",
+  "email",
+  "number",
+  "boolean",
+  "integer",
+  "biginteger",
+  "float",
+  "decimal",
 ]);
 
 /**
@@ -41,7 +48,7 @@ function resolveFieldValue(obj: any, path: string): any {
  * translatable field types are already strings.
  */
 function serializeFieldValue(value: any, type: string): string {
-  if (type === "blocks") {
+  if (type === "blocks" || type === "json" || type === "component") {
     if (value == null) return "[]";
     return JSON.stringify(value);
   }
@@ -77,10 +84,16 @@ function buildQueryOptions(
   const directFields = new Set<string>(["documentId"]);
   const componentFields = new Map<string, Set<string>>();
   const dynamiczoneNames = new Set<string>();
+  const populate: Record<string, any> = {};
 
   for (const field of localizableFields) {
     if (field.type === "dynamiczone") {
       dynamiczoneNames.add(field.name);
+      continue;
+    }
+    if (field.type === "component") {
+      // Repeatable component treated as a JSON blob — must go in populate, not fields
+      populate[field.name] = true;
       continue;
     }
     const dot = field.name.indexOf(".");
@@ -94,7 +107,6 @@ function buildQueryOptions(
     }
   }
 
-  const populate: Record<string, any> = {};
   for (const [parent, subFields] of componentFields) {
     populate[parent] = { fields: Array.from(subFields) };
   }
@@ -159,20 +171,39 @@ export default ({ strapi }: { strapi: any }) => ({
         if (fieldName === "locale" || fieldName === "localizations") {
           continue;
         }
+
         if (fieldDef.type === "component") {
-          const component = strapi.components[fieldDef.component];
-          if (component?.attributes) {
-            for (const [subName, subDef] of Object.entries<any>(
-              component.attributes,
-            )) {
-              if (!TRANSLATABLE_FIELD_TYPES.has(subDef.type)) {
-                continue;
-              }
+          if (fieldDef.repeatable) {
+            // Repeatable component: treat whole array as a JSON blob
+            const component = strapi.components[fieldDef.component];
+            const hasTranslatable =
+              component?.attributes &&
+              Object.values<any>(component.attributes).some((d: any) =>
+                TRANSLATABLE_FIELD_TYPES.has(d.type),
+              );
+            if (hasTranslatable) {
               localizableFields.push({
-                name: `${fieldName}.${subName}`,
-                type: (subDef as any).type,
-                required: (subDef as any).required || false,
+                name: fieldName,
+                type: "component",
+                required: fieldDef.required || false,
               });
+            }
+          } else {
+            // Non-repeatable component: expand sub-fields with dot-notation
+            const component = strapi.components[fieldDef.component];
+            if (component?.attributes) {
+              for (const [subName, subDef] of Object.entries<any>(
+                component.attributes,
+              )) {
+                if (!TRANSLATABLE_FIELD_TYPES.has(subDef.type)) {
+                  continue;
+                }
+                localizableFields.push({
+                  name: `${fieldName}.${subName}`,
+                  type: (subDef as any).type,
+                  required: (subDef as any).required || false,
+                });
+              }
             }
           }
           continue;

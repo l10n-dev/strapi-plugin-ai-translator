@@ -4,6 +4,7 @@ export interface PluginSettings {
   apiKey: string;
   selectedCategories: string[];
   incremental: boolean;
+  generateGlossary: boolean;
   lastTargetLocale: string;
 }
 
@@ -11,6 +12,7 @@ const DEFAULT_SETTINGS: PluginSettings = {
   apiKey: '',
   selectedCategories: [],
   incremental: true,
+  generateGlossary: false,
   lastTargetLocale: '',
 };
 

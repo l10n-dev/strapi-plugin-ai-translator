@@ -62,6 +62,43 @@ let bulkProgress: BulkProgress = {
 
 let abortBulk = false;
 
+/**
+ * Deep-merge `data` (translated fields) into `entry` (existing document).
+ * Only keys present in `data` are visited; all other entry properties are
+ * preserved untouched.  This ensures non-translated component fields (e.g.
+ * `metaDescription` when only `metaTitle` was translated) survive the update.
+ *
+ * Merge rules:
+ *  - primitive / null in data  → use data value
+ *  - array in data             → merge element-by-element with entry array
+ *  - plain object in data      → spread entry object, recursively apply data keys
+ */
+function deepMergeTranslated(entryValue: any, dataValue: any): any {
+  if (dataValue === null || typeof dataValue !== "object") return dataValue;
+
+  if (Array.isArray(dataValue)) {
+    const entryArray = Array.isArray(entryValue) ? entryValue : [];
+    return dataValue.map((item: any, i: number) =>
+      deepMergeTranslated(entryArray[i], item),
+    );
+  }
+
+  // Plain object
+  if (
+    entryValue &&
+    typeof entryValue === "object" &&
+    !Array.isArray(entryValue)
+  ) {
+    const result: Record<string, any> = { ...entryValue };
+    for (const [key, val] of Object.entries(dataValue)) {
+      result[key] = deepMergeTranslated(entryValue[key], val);
+    }
+    return result;
+  }
+
+  return dataValue;
+}
+
 function serializeFieldValue(value: any): string {
   try {
     return typeof value === "string" ? value : JSON.stringify(value);
@@ -144,7 +181,7 @@ export default ({ strapi }: { strapi: any }) => {
             sourceStrings: JSON.stringify(sourceObj),
             targetLanguageCode: targetLocale,
             client: "strapi-ai-translator",
-            translateOnlyNewStrings: options?.incremental || false,
+            translateOnlyNewStrings: false, // We handle incremental logic ourselves by passing only changed fields
             schema: null,
             format: "json",
             generateGlossary: options?.generateGlossary || false,
@@ -240,28 +277,43 @@ export default ({ strapi }: { strapi: any }) => {
         translatedFields,
       );
 
-      const existing = await strapi
+      const { syncNonLocalizedAttributes } = strapi
+        .plugin("i18n")
+        .service("localizations");
+
+      const entry = await strapi
+        .documents(uid)
+        .findOne({
+          documentId,
+          populate: "*",
+        })
+        .catch(() => null);
+
+      await syncNonLocalizedAttributes(entry, strapi.getModel(uid));
+
+      // Fetch the existing target-locale entry so we can deep-merge translated
+      // fields into it, preserving non-translated component properties.
+      const targetEntry = await strapi
         .documents(uid)
         .findOne({
           documentId,
           locale: targetLocale,
-          fields: ["documentId"],
+          populate: "*",
         })
         .catch(() => null);
 
-      if (existing) {
-        return strapi.documents(uid).update({
-          documentId,
-          locale: targetLocale,
-          data,
-        });
-      } else {
-        return strapi.documents(uid).update({
-          documentId,
-          locale: targetLocale,
-          data,
-        });
+      // For every key in data, deep-merge with the corresponding value from the
+      // target entry so that non-translated nested fields are not wiped out.
+      const mergedData: Record<string, any> = {};
+      for (const [key, value] of Object.entries(data)) {
+        mergedData[key] = deepMergeTranslated(targetEntry?.[key], value);
       }
+
+      return strapi.documents(uid).update({
+        documentId,
+        locale: targetLocale,
+        data: mergedData,
+      });
     },
 
     async translateBulk(
