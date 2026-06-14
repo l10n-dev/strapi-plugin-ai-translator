@@ -5,7 +5,7 @@
 
 Translate your Strapi v5 i18n content with l10n.dev [AI localization](https://l10n.dev) service - directly from the Admin Panel. Supports bulk auto translation, per-field translation, and a side-by-side editor for reviewing and editing results. The AI engine understands context, supports 165 languages, preserves formatting and structure, and follows grammar and plural form rules - producing natural, human-like translations.
 
-**30,000 characters free every month** - no credit card required.
+**10,000 characters free every month** - no credit card required.
 
 ---
 
@@ -20,6 +20,7 @@ Translate your Strapi v5 i18n content with l10n.dev [AI localization](https://l1
 - **Usage Tracking** — Monitor usage and remaining balance.
 - **Persistent Preferences** — Selected target language, incremental toggle, and category selections are saved across sessions.
 - **Localized UI** — The plugin interface is available in 11 languages. It follows the language you select in your Strapi profile.
+- **Translation Glossary** - Generate and save AI glossaries for consistent terminology across translations.
 
 ---
 
@@ -137,7 +138,19 @@ All settings are managed through the Admin Panel UI — no file-based configurat
 
 ### Incremental Mode
 
-When enabled, entries that are already up-to-date are skipped entirely, saving your character quota. For entries where the source has been updated since the last translation, all fields are retranslated — Strapi does not track which specific field changed. To translate or edit a single field independently, open the entry in the [Editor](#side-by-side-editor).
+When enabled, entries that are already up-to-date are skipped entirely, saving your character quota. Strapi does not track which specific field changed so we store hash of the source text (not content itself) for comparison of text changes new hash insects the text should be retranslated. To translate or edit a single field independently, open the entry in the [Editor](#side-by-side-editor).
+
+## Translation Glossary
+
+A translation glossary maps specific source-language terms to approved target-language equivalents, ensuring the AI uses your exact terminology instead of valid-but-unintended synonyms. Glossaries are especially valuable for brand names, legal terms, clinical vocabulary, and product-specific concepts.
+
+### AI Glossary Generation
+
+When **Generate & Save Glossary** is enabled (config) it automatically builds a glossary from the source and translated target content, then save it as the active glossary for this source/target language pair. Once saved, the glossary is applied automatically on all future translations for the same language pair.
+
+> **Note:** When **Generate & Save Glossary** is enabled, your character quota is debited for the full source content upfront — even when you choose translating only new strings, because AI analyze whole content to build correct glossary.
+
+Manage your saved glossaries at [l10n.dev/ws/translation-glossary](https://l10n.dev/ws/translation-glossary).
 
 ---
 
@@ -184,7 +197,7 @@ All endpoints are admin-authenticated (`admin::isAuthenticatedAdmin`) and prefix
 
 ## Pricing
 
-- **Free tier** — 30,000 characters free every month, no credit card required.
+- **Free tier** — 10,000 characters free every month, no credit card required.
 - **Pay-as-you-go** — Affordable character-based pricing with no subscription required.
 - **Current rates** — Visit [l10n.dev/#pricing](https://l10n.dev/#pricing) for up-to-date pricing.
 

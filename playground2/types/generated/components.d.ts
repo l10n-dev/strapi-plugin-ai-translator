@@ -19,6 +19,7 @@ export interface SharedQuote extends Struct.ComponentSchema {
   };
   attributes: {
     body: Schema.Attribute.Text;
+    testenum: Schema.Attribute.Enumeration<['morning', 'evening']>;
     title: Schema.Attribute.String;
   };
 }
@@ -32,6 +33,10 @@ export interface SharedRichText extends Struct.ComponentSchema {
   };
   attributes: {
     body: Schema.Attribute.RichText;
+    test: Schema.Attribute.Enumeration<['test', 'test 1', 'test 2']>;
+    TestComponenent: Schema.Attribute.Component<'shared.test-blocks', true>;
+    testJson: Schema.Attribute.Blocks;
+    TestMarkdown: Schema.Attribute.RichText;
   };
 }
 
@@ -62,6 +67,18 @@ export interface SharedSlider extends Struct.ComponentSchema {
   };
 }
 
+export interface SharedTestBlocks extends Struct.ComponentSchema {
+  collectionName: 'components_shared_test_blocks';
+  info: {
+    displayName: 'test blocks';
+    icon: 'shirt';
+  };
+  attributes: {
+    Testinnerblocks: Schema.Attribute.Blocks;
+    title: Schema.Attribute.String;
+  };
+}
+
 declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
@@ -70,6 +87,7 @@ declare module '@strapi/strapi' {
       'shared.rich-text': SharedRichText;
       'shared.seo': SharedSeo;
       'shared.slider': SharedSlider;
+      'shared.test-blocks': SharedTestBlocks;
     }
   }
 }

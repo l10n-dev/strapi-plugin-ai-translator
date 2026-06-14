@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_shared_test_blocks",
+  "info": {
+    "displayName": "test blocks",
+    "icon": "shirt"
+  },
+  "options": {},
+  "attributes": {
+    "Testinnerblocks": {
+      "type": "blocks"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "config": {}
+}

@@ -70,8 +70,10 @@ export const TranslateButton = () => {
         throw new Error(result.message || "Translation failed");
       }
 
-      // Populate each translated field into the form via onChange
-      Object.entries(result.translations).forEach(([key, value]) => {
+      // Populate each translated field into the form via onChange.
+      // result.data is the rebuilt structure from rebuildDataFromTranslated,
+      // which correctly nests component sub-fields and dynamiczone blocks.
+      Object.entries(result.data ?? {}).forEach(([key, value]) => {
         (form as any).onChange({ target: { name: key, value } });
       });
 

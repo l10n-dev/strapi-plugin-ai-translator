@@ -7,6 +7,7 @@ interface PluginSettings {
   hasApiKey: boolean;
   selectedCategories: string[];
   incremental: boolean;
+  generateGlossary: boolean;
   lastTargetLocale: string;
 }
 

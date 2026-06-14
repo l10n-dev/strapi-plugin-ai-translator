@@ -15,6 +15,7 @@ export default ({ strapi }: { strapi: any }) => ({
       targetLocale,
       {
         incremental: false, // Force incremental to false for selected translation
+        generateGlossary: false, // Force generateGlossary to false for selected translation
         fields,
       },
     );
@@ -27,16 +28,29 @@ export default ({ strapi }: { strapi: any }) => ({
       } else {
         ctx.status = 500;
       }
+      ctx.body = result;
+      return;
     }
 
-    ctx.body = result;
+    const contentTypeService = strapi
+      .plugin("ai-translator")
+      .service("content-type");
+
+    const data = await contentTypeService.rebuildDataFromTranslated(
+      uid,
+      documentId,
+      result.translations ?? {},
+    );
+
+    ctx.body = { ...result, data };
   },
 
   async translateBulk(ctx: any) {
     const translationService = strapi
       .plugin("ai-translator")
       .service("translation");
-    const { uids, targetLocale, incremental } = ctx.request.body;
+    const { uids, targetLocale, incremental, generateGlossary } =
+      ctx.request.body;
 
     if (!uids || !Array.isArray(uids) || uids.length === 0 || !targetLocale) {
       return ctx.badRequest("uids (array) and targetLocale are required");
@@ -45,6 +59,7 @@ export default ({ strapi }: { strapi: any }) => ({
     // Launch bulk translation in background — respond immediately
     translationService.translateBulk(uids, targetLocale, {
       incremental: !!incremental,
+      generateGlossary: !!generateGlossary,
     });
 
     ctx.body = { status: "started", message: "Bulk translation started" };

@@ -5,6 +5,7 @@ export interface TranslateEntryResult {
   reason?: "insufficientBalance" | "unauthorized" | "unknown";
   message?: string;
   translations?: Record<string, string>;
+  data?: Record<string, any>;
   charsUsed?: number;
   remainingBalance?: number;
 }
@@ -61,6 +62,24 @@ let bulkProgress: BulkProgress = {
 
 let abortBulk = false;
 
+function serializeFieldValue(value: any): string {
+  try {
+    return typeof value === "string" ? value : JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function deserializeFieldValue(value: string): any {
+  if (value === undefined) return undefined;
+  // Try to parse as JSON, in case it's a serialized "blocks" field or other JSON value
+  try {
+    return JSON.parse(value);
+  } catch {
+    return new String(value);
+  }
+}
+
 export default ({ strapi }: { strapi: any }) => {
   return {
     getBulkProgress(): BulkProgress {
@@ -71,7 +90,11 @@ export default ({ strapi }: { strapi: any }) => {
       uid: string,
       documentId: string,
       targetLocale: string,
-      options?: { fields?: string[] },
+      options?: {
+        fields?: string[];
+        incremental?: boolean;
+        generateGlossary?: boolean;
+      },
     ): Promise<TranslateEntryResult> {
       const settingsService = strapi
         .plugin("ai-translator")
@@ -104,7 +127,7 @@ export default ({ strapi }: { strapi: any }) => {
           continue;
         }
         if (fieldData.source) {
-          sourceObj[fieldName] = String(fieldData.source);
+          sourceObj[fieldName] = deserializeFieldValue(fieldData.source);
         }
       }
 
@@ -121,9 +144,10 @@ export default ({ strapi }: { strapi: any }) => {
             sourceStrings: JSON.stringify(sourceObj),
             targetLanguageCode: targetLocale,
             client: "strapi-ai-translator",
-            translateOnlyNewStrings: false,
+            translateOnlyNewStrings: options?.incremental || false,
             schema: null,
             format: "json",
+            generateGlossary: options?.generateGlossary || false,
           },
           apiKey,
         );
@@ -154,17 +178,19 @@ export default ({ strapi }: { strapi: any }) => {
         }
 
         const result = response.data;
-        let translations: Record<string, string> = {};
+        let translations: Record<string, any> = {};
         if (result.translations) {
-          translations =
-            typeof result.translations === "string"
-              ? JSON.parse(result.translations)
-              : result.translations;
+          translations = JSON.parse(result.translations);
         }
 
         return {
           status: "success",
-          translations,
+          translations: Object.fromEntries(
+            Object.entries(translations).map(([key, value]) => [
+              key,
+              serializeFieldValue(value),
+            ]),
+          ),
           charsUsed: result.usage?.charsUsed,
           remainingBalance: result.remainingBalance,
         };
@@ -241,7 +267,7 @@ export default ({ strapi }: { strapi: any }) => {
     async translateBulk(
       uids: string[],
       targetLocale: string,
-      options?: { incremental?: boolean },
+      options?: { incremental?: boolean; generateGlossary?: boolean },
     ) {
       // Reset immediately before any async work to avoid race with client polling
       abortBulk = false;
@@ -329,6 +355,10 @@ export default ({ strapi }: { strapi: any }) => {
             task.uid,
             task.documentId,
             targetLocale,
+            {
+              incremental: options?.incremental,
+              generateGlossary: options?.generateGlossary,
+            },
           );
 
           if (result.status === "success" && result.translations) {
