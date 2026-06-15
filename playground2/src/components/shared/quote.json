@@ -11,6 +11,13 @@
     },
     "body": {
       "type": "text"
+    },
+    "testenum": {
+      "type": "enumeration",
+      "enum": [
+        "morning",
+        "evening"
+      ]
     }
   }
 }

@@ -78,6 +78,7 @@ export const translateEntry = (
     documentId: string;
     targetLocale: string;
     incremental?: boolean;
+    generateGlossary?: boolean;
     fields?: string[];
   },
 ) => pluginRequest(client, "post", "/translate", data);
@@ -88,6 +89,7 @@ export const translateBulk = (
     uids: string[];
     targetLocale: string;
     incremental?: boolean;
+    generateGlossary?: boolean;
   },
 ) => pluginRequest(client, "post", "/translate/bulk", data);
 

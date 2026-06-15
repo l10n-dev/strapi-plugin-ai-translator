@@ -16,6 +16,7 @@ export default ({ strapi }: { strapi: any }) => ({
       apiKey: true,
       selectedCategories: true,
       incremental: true,
+      generateGlossary: true,
       lastTargetLocale: true,
     };
 

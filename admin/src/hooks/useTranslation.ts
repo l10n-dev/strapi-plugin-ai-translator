@@ -55,7 +55,12 @@ export const useTranslation = () => {
   const bulkMutation = useMutation<
     any,
     Error,
-    { uids: string[]; targetLocale: string; incremental?: boolean }
+    {
+      uids: string[];
+      targetLocale: string;
+      incremental?: boolean;
+      generateGlossary?: boolean;
+    }
   >(
     async (params) => {
       const data = await translateBulk(client, params);

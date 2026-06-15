@@ -5,6 +5,7 @@ export interface TranslateEntryResult {
   reason?: "insufficientBalance" | "unauthorized" | "unknown";
   message?: string;
   translations?: Record<string, string>;
+  data?: Record<string, any>;
   charsUsed?: number;
   remainingBalance?: number;
 }
@@ -61,6 +62,61 @@ let bulkProgress: BulkProgress = {
 
 let abortBulk = false;
 
+/**
+ * Deep-merge `data` (translated fields) into `entry` (existing document).
+ * Only keys present in `data` are visited; all other entry properties are
+ * preserved untouched.  This ensures non-translated component fields (e.g.
+ * `metaDescription` when only `metaTitle` was translated) survive the update.
+ *
+ * Merge rules:
+ *  - primitive / null in data  → use data value
+ *  - array in data             → merge element-by-element with entry array
+ *  - plain object in data      → spread entry object, recursively apply data keys
+ */
+function deepMergeTranslated(entryValue: any, dataValue: any): any {
+  if (dataValue === null || typeof dataValue !== "object") return dataValue;
+
+  if (Array.isArray(dataValue)) {
+    const entryArray = Array.isArray(entryValue) ? entryValue : [];
+    return dataValue.map((item: any, i: number) =>
+      deepMergeTranslated(entryArray[i], item),
+    );
+  }
+
+  // Plain object
+  if (
+    entryValue &&
+    typeof entryValue === "object" &&
+    !Array.isArray(entryValue)
+  ) {
+    const result: Record<string, any> = { ...entryValue };
+    for (const [key, val] of Object.entries(dataValue)) {
+      result[key] = deepMergeTranslated(entryValue[key], val);
+    }
+    return result;
+  }
+
+  return dataValue;
+}
+
+function serializeFieldValue(value: any): string {
+  try {
+    return typeof value === "string" ? value : JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function deserializeFieldValue(value: string): any {
+  if (value === undefined) return undefined;
+  // Try to parse as JSON, in case it's a serialized "blocks" field or other JSON value
+  try {
+    return JSON.parse(value);
+  } catch {
+    return new String(value);
+  }
+}
+
 export default ({ strapi }: { strapi: any }) => {
   return {
     getBulkProgress(): BulkProgress {
@@ -71,7 +127,11 @@ export default ({ strapi }: { strapi: any }) => {
       uid: string,
       documentId: string,
       targetLocale: string,
-      options?: { fields?: string[] },
+      options?: {
+        fields?: string[];
+        incremental?: boolean;
+        generateGlossary?: boolean;
+      },
     ): Promise<TranslateEntryResult> {
       const settingsService = strapi
         .plugin("ai-translator")
@@ -104,7 +164,7 @@ export default ({ strapi }: { strapi: any }) => {
           continue;
         }
         if (fieldData.source) {
-          sourceObj[fieldName] = String(fieldData.source);
+          sourceObj[fieldName] = deserializeFieldValue(fieldData.source);
         }
       }
 
@@ -121,9 +181,10 @@ export default ({ strapi }: { strapi: any }) => {
             sourceStrings: JSON.stringify(sourceObj),
             targetLanguageCode: targetLocale,
             client: "strapi-ai-translator",
-            translateOnlyNewStrings: false,
+            translateOnlyNewStrings: false, // We handle incremental logic ourselves by passing only changed fields
             schema: null,
             format: "json",
+            generateGlossary: options?.generateGlossary || false,
           },
           apiKey,
         );
@@ -154,17 +215,19 @@ export default ({ strapi }: { strapi: any }) => {
         }
 
         const result = response.data;
-        let translations: Record<string, string> = {};
+        let translations: Record<string, any> = {};
         if (result.translations) {
-          translations =
-            typeof result.translations === "string"
-              ? JSON.parse(result.translations)
-              : result.translations;
+          translations = JSON.parse(result.translations);
         }
 
         return {
           status: "success",
-          translations,
+          translations: Object.fromEntries(
+            Object.entries(translations).map(([key, value]) => [
+              key,
+              serializeFieldValue(value),
+            ]),
+          ),
           charsUsed: result.usage?.charsUsed,
           remainingBalance: result.remainingBalance,
         };
@@ -214,34 +277,49 @@ export default ({ strapi }: { strapi: any }) => {
         translatedFields,
       );
 
-      const existing = await strapi
+      const { syncNonLocalizedAttributes } = strapi
+        .plugin("i18n")
+        .service("localizations");
+
+      const entry = await strapi
+        .documents(uid)
+        .findOne({
+          documentId,
+          populate: "*",
+        })
+        .catch(() => null);
+
+      await syncNonLocalizedAttributes(entry, strapi.getModel(uid));
+
+      // Fetch the existing target-locale entry so we can deep-merge translated
+      // fields into it, preserving non-translated component properties.
+      const targetEntry = await strapi
         .documents(uid)
         .findOne({
           documentId,
           locale: targetLocale,
-          fields: ["documentId"],
+          populate: "*",
         })
         .catch(() => null);
 
-      if (existing) {
-        return strapi.documents(uid).update({
-          documentId,
-          locale: targetLocale,
-          data,
-        });
-      } else {
-        return strapi.documents(uid).update({
-          documentId,
-          locale: targetLocale,
-          data,
-        });
+      // For every key in data, deep-merge with the corresponding value from the
+      // target entry so that non-translated nested fields are not wiped out.
+      const mergedData: Record<string, any> = {};
+      for (const [key, value] of Object.entries(data)) {
+        mergedData[key] = deepMergeTranslated(targetEntry?.[key], value);
       }
+
+      return strapi.documents(uid).update({
+        documentId,
+        locale: targetLocale,
+        data: mergedData,
+      });
     },
 
     async translateBulk(
       uids: string[],
       targetLocale: string,
-      options?: { incremental?: boolean },
+      options?: { incremental?: boolean; generateGlossary?: boolean },
     ) {
       // Reset immediately before any async work to avoid race with client polling
       abortBulk = false;
@@ -329,6 +407,10 @@ export default ({ strapi }: { strapi: any }) => {
             task.uid,
             task.documentId,
             targetLocale,
+            {
+              incremental: options?.incremental,
+              generateGlossary: options?.generateGlossary,
+            },
           );
 
           if (result.status === "success" && result.translations) {

@@ -38,6 +38,7 @@ export const Dashboard = () => {
   } = usePluginSettings();
   const [targetLocale, setTargetLocale] = useState("");
   const [incremental, setIncremental] = useState(true);
+  const [generateGlossary, setGenerateGlossary] = useState(false);
   const [selectedUids, setSelectedUids] = useState<string[]>([]);
   const [isBulkRunning, setIsBulkRunning] = useState(false);
   const [translatingUid, setTranslatingUid] = useState<string | undefined>();
@@ -68,8 +69,11 @@ export const Dashboard = () => {
   // Initialize from settings
   useEffect(() => {
     if (settings) {
-      if (settings.lastTargetLocale) setTargetLocale(settings.lastTargetLocale);
+      if (settings.lastTargetLocale) {
+        setTargetLocale(settings.lastTargetLocale);
+      }
       setIncremental(settings.incremental ?? true);
+      setGenerateGlossary(settings.generateGlossary ?? false);
       if (settings.selectedCategories?.length) {
         setSelectedUids(settings.selectedCategories);
       } else if (data?.contentTypes) {
@@ -193,6 +197,14 @@ export const Dashboard = () => {
     [updateSettings],
   );
 
+  const handleGenerateGlossaryChange = useCallback(
+    (checked: boolean) => {
+      setGenerateGlossary(checked);
+      updateSettings({ generateGlossary: checked });
+    },
+    [updateSettings],
+  );
+
   const handleToggleSelect = useCallback(
     (uid: string) => {
       setSelectedUids((prev) => {
@@ -222,7 +234,7 @@ export const Dashboard = () => {
       if (!targetLocale) return;
       setTranslatingUid(uid);
       translateBulk.mutate(
-        { uids: [uid], targetLocale, incremental },
+        { uids: [uid], targetLocale, incremental, generateGlossary },
         {
           onSuccess: () => {
             setIsBulkRunning(true);
@@ -234,13 +246,19 @@ export const Dashboard = () => {
         },
       );
     },
-    [targetLocale, incremental, translateBulk, toggleNotification],
+    [
+      targetLocale,
+      incremental,
+      generateGlossary,
+      translateBulk,
+      toggleNotification,
+    ],
   );
 
   const handleAutoTranslate = useCallback(() => {
     if (!targetLocale || selectedUids.length === 0) return;
     translateBulk.mutate(
-      { uids: selectedUids, targetLocale, incremental },
+      { uids: selectedUids, targetLocale, incremental, generateGlossary },
       {
         onSuccess: () => {
           setIsBulkRunning(true);
@@ -254,6 +272,7 @@ export const Dashboard = () => {
     targetLocale,
     selectedUids,
     incremental,
+    generateGlossary,
     translateBulk,
     toggleNotification,
   ]);
@@ -443,6 +462,16 @@ export const Dashboard = () => {
                       "Incremental (new entries or updated entries only)",
                   })}
                 </Checkbox>
+                <Checkbox
+                  checked={generateGlossary}
+                  onCheckedChange={handleGenerateGlossaryChange}
+                >
+                  {formatMessage({
+                    id: getTrad("dashboard.generateGlossary"),
+                    defaultMessage:
+                      "Generate & Save Glossary (recommended for consistent translations)",
+                  })}
+                </Checkbox>
               </Flex>
               <QuotaDisplay remainingBalance={remainingBalance} />
             </Flex>
@@ -602,6 +631,21 @@ export const Dashboard = () => {
                       {formatMessage({
                         id: getTrad("footer.billing"),
                         defaultMessage: "Billing",
+                      })}
+                    </Typography>
+                  </Link>
+
+                  <Link
+                    href={localizeUrl(
+                      "https://l10n.dev/ws/translation-glossary",
+                      locale,
+                    )}
+                    isExternal
+                  >
+                    <Typography variant="pi">
+                      {formatMessage({
+                        id: getTrad("footer.manageGlossary"),
+                        defaultMessage: "Manage Glossary",
                       })}
                     </Typography>
                   </Link>
