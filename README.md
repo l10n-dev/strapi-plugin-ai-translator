@@ -73,6 +73,9 @@ npm run build
 npm run develop
 ```
 
+**PS:** It didn’t get into the marketplace. Reason? We have got email from Strapi team: **"it is in direct competition with our own enterprise AI translations feature".**
+The plugin isn’t competing with the platform it’s solving the problems they don’t go deep enough into. If you find the library useful and decide to use it in your project, I'd really appreciate a ⭐ on the repository. It helps others discover the project and motivates further development.
+
 ---
 
 ## Configuration
