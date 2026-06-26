@@ -140,6 +140,8 @@ All settings are managed through the Admin Panel UI — no file-based configurat
 
 When enabled, entries that are already up-to-date are skipped entirely, saving your character quota. Strapi does not track which specific field changed so we store hash of the source text (not content itself) for comparison of text changes new hash insects the text should be retranslated. To translate or edit a single field independently, open the entry in the [Editor](#side-by-side-editor).
 
+**Note:** First translation it translates only added strings, because hash table is empty to detect changed strings.
+
 ## Translation Glossary
 
 A translation glossary maps specific source-language terms to approved target-language equivalents, ensuring the AI uses your exact terminology instead of valid-but-unintended synonyms. Glossaries are especially valuable for brand names, legal terms, clinical vocabulary, and product-specific concepts.
@@ -151,6 +153,18 @@ When **Generate & Save Glossary** is enabled (config) it automatically builds a 
 > **Note:** When **Generate & Save Glossary** is enabled, your character quota is debited for the full source content upfront — even when you choose translating only new strings, because AI analyze whole content to build correct glossary.
 
 Manage your saved glossaries at [l10n.dev/ws/translation-glossary](https://l10n.dev/ws/translation-glossary).
+
+## Linguistic Instructions
+
+Linguistic Instructions let you guide AI:
+- 📝 "Use formal tone"
+- 📝 "Do not translate product names"
+- 📝 "Use active voice"
+
+Unlike glossaries that control specific terms, Linguistic Instructions control the overall style, tone, and translation behavior.
+Combined with AI Glossaries, they give much more control over localization quality and brand consistency.
+
+Manage your saved linguistic Instructions at [l10n.dev/ws/linguistic-instructions](https://l10n.dev/ws/linguistic-instructions).
 
 ---
 
@@ -180,7 +194,7 @@ All endpoints are admin-authenticated (`admin::isAuthenticatedAdmin`) and prefix
 | Strapi | `^5.0.0` |
 | Node.js | `>=18.0.0` |
 | `@strapi/design-system` | `^2.0.0` |
-| `ai-l10n-core` | `^1.4.1` |
+| `ai-l10n-core` | `^1.7.0` |
 
 > This plugin is **Strapi v5 only**. It is not compatible with Strapi v4.
 

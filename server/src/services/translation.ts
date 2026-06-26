@@ -156,6 +156,7 @@ export default ({ strapi }: { strapi: any }) => {
       );
 
       const sourceObj: Record<string, string> = {};
+      const targetObj: Record<string, string> = {};
       const fieldsToTranslate = options?.fields || Object.keys(entry.fields);
 
       for (const fieldName of fieldsToTranslate) {
@@ -165,6 +166,9 @@ export default ({ strapi }: { strapi: any }) => {
         }
         if (fieldData.source) {
           sourceObj[fieldName] = deserializeFieldValue(fieldData.source);
+        }
+        if (fieldData.target) {
+          targetObj[fieldName] = deserializeFieldValue(fieldData.target);
         }
       }
 
@@ -179,12 +183,14 @@ export default ({ strapi }: { strapi: any }) => {
         const response = await l10nService.translate(
           {
             sourceStrings: JSON.stringify(sourceObj),
+            targetStrings: JSON.stringify(targetObj),
             targetLanguageCode: targetLocale,
             client: "strapi-ai-translator",
-            translateOnlyNewStrings: false, // We handle incremental logic ourselves by passing only changed fields
+            translateOnlyNewStrings: options?.incremental || false,
             schema: null,
             format: "json",
             generateGlossary: options?.generateGlossary || false,
+            scope: documentId,
           },
           apiKey,
         );

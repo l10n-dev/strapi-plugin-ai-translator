@@ -20,7 +20,7 @@ export const QuotaDisplay = ({ remainingBalance }: QuotaDisplayProps) => {
               id: getTrad("dashboard.freeQuota"),
               defaultMessage: "{count} characters free monthly",
             },
-            { count: (30000).toLocaleString() },
+            { count: (10000).toLocaleString() },
           )}
         </Typography>
       )}
