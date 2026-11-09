@@ -1,6 +1,6 @@
 {
   "name": "strapi-plugin-ai-translator",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Strapi v5 plugin to translate i18n content with l10n.dev AI translation service directly from the Admin Panel",
   "license": "MIT",
   "author": {
@@ -29,7 +29,7 @@
   "strapi": {
     "name": "ai-translator",
     "displayName": "L10n.dev - AI Translator",
-    "description": "Translate your i18n content with l10n.dev AI - bulk & per-field, side-by-side editor, 30k chars/month free",
+    "description": "Translate your i18n content with l10n.dev AI - bulk & per-field, side-by-side editor, free trial for new users",
     "kind": "plugin"
   },
   "type": "commonjs",
@@ -60,7 +60,7 @@
     "verify": "strapi-plugin verify"
   },
   "dependencies": {
-    "ai-l10n-core": "^1.7.0"
+    "ai-l10n-core": "^1.12.1"
   },
   "devDependencies": {
     "@strapi/design-system": "^2.0.0",

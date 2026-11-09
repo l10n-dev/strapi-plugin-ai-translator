@@ -121,7 +121,7 @@ export const Dashboard = () => {
               type: "warning",
               message: formatMessage({
                 id: getTrad("notification.insufficientBalance"),
-                defaultMessage: `Translation stopped: insufficient balance. Purchase more at ${URLS.PRICING}`,
+                defaultMessage: `Translation stopped: insufficient balance. Upgrade your plan or renew early at ${URLS.PRICING}`,
               }),
             });
           }
@@ -430,7 +430,7 @@ export const Dashboard = () => {
               <Link href={localizeUrl(URLS.API_KEYS, locale)} isExternal>
                 {formatMessage({
                   id: getTrad("settings.getApiKeyLink"),
-                  defaultMessage: "Get a free key",
+                  defaultMessage: "Get an API key",
                 })}
               </Link>
             </Flex>
