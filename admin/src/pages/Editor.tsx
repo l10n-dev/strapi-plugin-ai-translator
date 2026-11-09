@@ -247,7 +247,7 @@ export const Editor = () => {
               type: "warning",
               message: formatMessage({
                 id: getTrad("notification.insufficientBalance"),
-                defaultMessage: `Insufficient balance. Purchase more at ${URLS.PRICING}`,
+                defaultMessage: `Insufficient balance. Upgrade your plan or renew early at ${URLS.PRICING}`,
               }),
             });
           } else if (status === 401) {
@@ -313,7 +313,7 @@ export const Editor = () => {
                 type: "warning",
                 message: formatMessage({
                   id: getTrad("notification.insufficientBalance"),
-                  defaultMessage: `Insufficient balance. Purchase more at ${URLS.PRICING}`,
+                  defaultMessage: `Insufficient balance. Upgrade your plan or renew early at ${URLS.PRICING}`,
                 }),
               });
             } else if (status === 401) {

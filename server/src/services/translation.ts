@@ -199,7 +199,7 @@ export default ({ strapi }: { strapi: any }) => {
           return {
             status: "error",
             reason: "insufficientBalance",
-            message: `Not enough characters remaining. Purchase more at ${URLS.PRICING}`,
+            message: `Not enough characters remaining. Upgrade your plan or renew early (unused characters carry over): ${URLS.PRICING}`,
             remainingBalance: response?.currentBalance,
           };
         }

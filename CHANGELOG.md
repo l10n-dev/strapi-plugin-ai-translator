@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-11-09
+
+### Changed
+
+- **Subscription plans** — l10n.dev now uses monthly subscription plans with a free trial for new users instead of a free monthly allowance and one-off character packages. The UI, README, and plugin description are updated accordingly:
+  - The dashboard shows "Monthly plans with a free trial for new users" instead of "10,000 characters free monthly", and the "Buy Characters" button is now "View Plans" (translation keys `dashboard.freeQuota` → `dashboard.plansInfo`, `dashboard.buyCharacters` → `dashboard.viewPlans`).
+  - Insufficient-balance (402) messages now suggest upgrading the plan or renewing early (unused characters carry over) instead of purchasing more characters.
+  - "Get a free key" link renamed to "Get an API key".
+- Updated `ai-l10n-core` to `^1.12.1`.
+
 ## [1.4.0] - 2026-06-26
 
 ### Changed

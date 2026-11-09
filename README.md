@@ -5,7 +5,7 @@
 
 Translate your Strapi v5 i18n content with l10n.dev [AI localization](https://l10n.dev) service - directly from the Admin Panel. Supports bulk auto translation, per-field translation, and a side-by-side editor for reviewing and editing results. The AI engine understands context, supports 165 languages, preserves formatting and structure, and follows grammar and plural form rules - producing natural, human-like translations.
 
-**10,000 characters free every month** - no credit card required.
+**Monthly plans with a free trial for new users** - see [pricing](https://l10n.dev/#pricing). Requires an l10n.dev subscription after the trial.
 
 ---
 
@@ -82,7 +82,7 @@ The plugin isn’t competing with the platform it’s solving the problems they 
 
 ### Get your API Key
 
-1. Go to [l10n.dev/ws/keys](https://l10n.dev/ws/keys) and create a free API key.
+1. Go to [l10n.dev/ws/keys](https://l10n.dev/ws/keys) and create an API key. New users get a free trial; after that, an active [subscription plan](https://l10n.dev/#pricing) is required to translate.
 2. Open the Strapi Admin Panel and navigate to **L10n.dev - AI Translator** in the sidebar.
 3. You will see a **"Paste your l10n.dev API key to start translating"** input at the top of the page.
 4. Paste your key into the field and click **"Save"**.
@@ -197,7 +197,7 @@ All endpoints are admin-authenticated (`admin::isAuthenticatedAdmin`) and prefix
 | Strapi | `^5.0.0` |
 | Node.js | `>=18.0.0` |
 | `@strapi/design-system` | `^2.0.0` |
-| `ai-l10n-core` | `^1.7.0` |
+| `ai-l10n-core` | `^1.12.1` |
 
 > This plugin is **Strapi v5 only**. It is not compatible with Strapi v4.
 
@@ -214,9 +214,12 @@ All endpoints are admin-authenticated (`admin::isAuthenticatedAdmin`) and prefix
 
 ## Pricing
 
-- **Free tier** — 10,000 characters free every month, no credit card required.
-- **Pay-as-you-go** — Affordable character-based pricing with no subscription required.
-- **Current rates** — Visit [l10n.dev/#pricing](https://l10n.dev/#pricing) for up-to-date pricing.
+The plugin itself is free and open source (MIT). Translations are performed by the l10n.dev service, which is billed through monthly subscription plans.
+
+- **Free trial** — New users get a short free trial with a starter character allowance.
+- **Monthly plans** — Choose a plan by monthly character volume; upgrade as your needs grow and cancel anytime on the Billing page.
+- **Carry-over** — Unused characters carry over when you renew or upgrade early.
+- **Current plans and prices** — See [l10n.dev/#pricing](https://l10n.dev/#pricing).
 
 ---
 

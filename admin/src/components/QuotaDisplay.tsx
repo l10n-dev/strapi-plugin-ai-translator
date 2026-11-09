@@ -15,13 +15,10 @@ export const QuotaDisplay = ({ remainingBalance }: QuotaDisplayProps) => {
     <Flex gap={3} alignItems="center">
       {!remainingBalance && remainingBalance !== 0 && (
         <Typography variant="pi" textColor="neutral600">
-          {formatMessage(
-            {
-              id: getTrad("dashboard.freeQuota"),
-              defaultMessage: "{count} characters free monthly",
-            },
-            { count: (10000).toLocaleString() },
-          )}
+          {formatMessage({
+            id: getTrad("dashboard.plansInfo"),
+            defaultMessage: "Monthly plans with a free trial for new users",
+          })}
         </Typography>
       )}
       {remainingBalance != null && remainingBalance >= 0 && (
@@ -47,8 +44,8 @@ export const QuotaDisplay = ({ remainingBalance }: QuotaDisplayProps) => {
         }
       >
         {formatMessage({
-          id: getTrad("dashboard.buyCharacters"),
-          defaultMessage: "Buy Characters",
+          id: getTrad("dashboard.viewPlans"),
+          defaultMessage: "View Plans",
         })}
       </Button>
     </Flex>
