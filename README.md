@@ -153,7 +153,7 @@ A translation glossary maps specific source-language terms to approved target-la
 
 When **Generate & Save Glossary** is enabled (config) it automatically builds a glossary from the source and translated target content, then save it as the active glossary for this source/target language pair. Once saved, the glossary is applied automatically on all future translations for the same language pair.
 
-> **Note:** When **Generate & Save Glossary** is enabled, your character quota is debited for the full source content upfront — even when you choose translating only new strings, because AI analyze whole content to build correct glossary.
+> **Note:** Glossary generation works with incremental updates. With **Translate only new strings** enabled, you are charged only for new and changed strings — not for the whole source content. On the **Pro** plan, the glossary is built from the whole content for more context.
 
 Manage your saved glossaries at [l10n.dev/ws/translation-glossary](https://l10n.dev/ws/translation-glossary).
 
