@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-11-11
+
+### Changed
+
+- **AI glossary generation for incremental updates** — no more charging for the whole source. With "Translate only new strings" enabled, you pay only for new and changed strings, even when **Generate & Save Glossary** is on. On the **Pro** plan, the glossary is built from the whole content for more context.
+
 ## [1.5.0] - 2026-11-09
 
 ### Changed
